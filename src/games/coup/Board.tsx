@@ -21,8 +21,9 @@ function InfluenceCard({ role, isRevealed, size = 'normal' }: {
   const isHidden = role === 'HIDDEN';
   
   // Custom fluid dimensions using clamp
-  const widthClass = isSmall ? 'w-[clamp(2.5rem,4vw,3.5rem)]' : 'w-[clamp(4.5rem,8vw,6rem)]';
-  const heightClass = isSmall ? 'h-[clamp(3.5rem,6vw,5rem)]' : 'h-[clamp(6rem,11vw,8rem)]';
+  // Custom fluid dimensions using clamp - Shrink significantly to gain space
+  const widthClass = isSmall ? 'w-[clamp(2rem,3vw,2.8rem)]' : 'w-[clamp(3.5rem,6vw,5rem)]';
+  const heightClass = isSmall ? 'h-[clamp(2.8rem,5vw,4rem)]' : 'h-[clamp(5rem,9vw,7rem)]';
 
   if (isHidden) {
     return (
@@ -48,8 +49,8 @@ function InfluenceCard({ role, isRevealed, size = 'normal' }: {
       bg-white rounded-xl shadow-md border-2 flex flex-col items-center justify-center relative transition-all duration-300
       ${!isRevealed ? 'border-gray-100' : ''}
     `} style={{ borderColor: isRevealed ? roleColor : undefined }}>
-      <span className={isSmall ? 'text-[clamp(1rem,2vw,1.5rem)]' : 'text-[clamp(1.8rem,4vw,2.5rem)]'}>{roleIcon}</span>
-      <span className={`${isSmall ? 'text-[clamp(6px,0.8vw,8px)]' : 'text-[clamp(8px,1vw,10px)]'} font-bold uppercase tracking-tighter mt-1 text-center px-1 break-words leading-tight`} style={{ color: roleColor }}>{role}</span>
+      <span className={isSmall ? 'text-[clamp(0.8rem,1.5vw,1.2rem)]' : 'text-[clamp(1.5rem,3vw,2.2rem)]'}>{roleIcon}</span>
+      <span className={`${isSmall ? 'text-[clamp(5.5px,0.7vw,7px)]' : 'text-[clamp(7px,0.8vw,9px)]'} font-bold uppercase tracking-tighter mt-1 text-center px-1 break-words leading-tight`} style={{ color: roleColor }}>{role}</span>
       {!isRevealed && (
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-600 rounded-full border-2 border-white shadow-sm" title="Private" />
       )}
@@ -227,7 +228,8 @@ export default function CoupBoard() {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
 
   useEffect(() => {
-    if (gameState.phase === 'WAITING_FOR_CHALLENGE' && gameState.pendingAction) {
+    const activePhase = ['WAITING_FOR_CHALLENGE', 'WAITING_FOR_BLOCK', 'WAITING_FOR_BLOCK_CHALLENGE'].includes(gameState.phase);
+    if (activePhase && gameState.pendingAction) {
       const elapsed = (Date.now() - gameState.pendingAction.timestamp) / 1000;
       const initial = Math.max(0, 10 - elapsed);
       setTimeLeft(Math.ceil(initial));
@@ -246,11 +248,17 @@ export default function CoupBoard() {
   const isMyTurn = activePlayer?.id === myPlayerId;
   const isExchangePhase = gameState.phase === 'SELECTING_EXCHANGE_CARDS' && isMyTurn;
   const isChallengePhase = gameState.phase === 'WAITING_FOR_CHALLENGE';
+  const isBlockPhase = gameState.phase === 'WAITING_FOR_BLOCK';
+  const isBlockChallengePhase = gameState.phase === 'WAITING_FOR_BLOCK_CHALLENGE';
   const isLossPhase = gameState.phase === 'SELECT_INFLUENCE_TO_LOSE';
   const isGameOver = gameState.phase === 'GAME_OVER';
   const isLoser = gameState.loserId === myPlayerId;
   const isActor = gameState.pendingAction?.actorId === myPlayerId;
+  const isTarget = gameState.pendingAction?.targetId === myPlayerId;
   const hasPassed = gameState.pendingAction?.challengers?.includes(myPlayerId);
+  const isBlocker = gameState.pendingAction?.blocks?.blockerId === myPlayerId;
+  
+  const isResponsePhase = isChallengePhase || isBlockPhase || isBlockChallengePhase;
 
   const handleAction = (type: string, targetId?: string, extra?: any) => {
     sendMessage({ type: 'COUP_ACTION', actionType: type, targetId, ...extra, timestamp: Date.now() });
@@ -269,27 +277,27 @@ export default function CoupBoard() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-['Inter',_sans-serif]">
-      {/* Header */}
-      <div className="px-6 md:px-10 py-4 md:py-6 bg-white flex items-center justify-between shadow-sm z-20 border-b border-gray-100">
+      {/* Header - Made smaller per user request */}
+      <div className="px-6 md:px-10 py-2 md:py-3 bg-white flex items-center justify-between shadow-sm z-20 border-b border-gray-100">
         <div className="flex items-center gap-3 md:gap-5">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:2xl bg-gray-900 flex items-center justify-center text-white shadow-xl">
-             <span className="font-black text-lg md:xl">C</span>
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:xl bg-gray-900 flex items-center justify-center text-white shadow-xl">
+             <span className="font-black text-base md:lg">C</span>
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight leading-none uppercase font-['Montserrat',_sans-serif]">Coup</h1>
-            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mt-1">Live Table</p>
+            <h1 className="text-lg md:text-xl font-black text-gray-900 tracking-tight leading-none uppercase font-['Montserrat',_sans-serif]">Coup</h1>
+            <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 mt-0.5">Live Table</p>
           </div>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           <button 
             onClick={() => setIsRulesModalOpen(true)}
-            className="px-4 md:px-6 py-2 md:py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold text-[10px] md:text-sm transition-all border border-gray-100 flex items-center gap-2"
+            className="px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold text-[9px] md:text-xs transition-all border border-gray-100 flex items-center gap-2"
           >
             <span className="hidden xs:inline">Rules</span> 📜
           </button>
           <button 
             onClick={() => confirm('Exit game and return to lobby?') && clearSession()}
-            className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[10px] md:text-xs transition-all border border-rose-100"
+            className="px-2.5 md:px-3 py-1.5 md:py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[9px] md:text-xs transition-all border border-rose-100"
           >
             Exit
           </button>
@@ -315,7 +323,7 @@ export default function CoupBoard() {
             <div 
               key={p.id} 
               className={`flex-shrink-0 transition-all duration-300 ${selectedTarget === p.id ? 'scale-105 ring-2 ring-indigo-500 ring-offset-4 rounded-xl' : ''}`}
-              onClick={() => !isChallengePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
+              onClick={() => !isResponsePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
             >
               <PlayerSeat player={p} isActive={activePlayer?.id === p.id} isSelf={false} size="compact" />
             </div>
@@ -352,7 +360,7 @@ export default function CoupBoard() {
 
         {/* Center Indicator */}
         <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 w-full px-8 pointer-events-none">
-          {isChallengePhase ? (
+          {isResponsePhase ? (
             <div className="relative w-24 h-24 md:w-32 md:h-32 mx-auto flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-full shadow-2xl border border-white">
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle cx="50%" cy="50%" r="42%" fill="none" stroke="#f3f4f6" strokeWidth="3" />
@@ -392,9 +400,9 @@ export default function CoupBoard() {
           {gameState.players.filter(p => p.id !== myPlayerId).map((p, i) => (
             <div 
               key={p.id} 
-              className={`absolute transition-all duration-500 z-10 ${selectedTarget === p.id ? 'scale-110 translate-y-[-10px]' : ''} ${!isChallengePhase && !isLossPhase && isMyTurn ? 'cursor-pointer hover:translate-y-[-5px]' : ''}`} 
+              className={`absolute transition-all duration-500 z-10 ${selectedTarget === p.id ? 'scale-110 translate-y-[-10px]' : ''} ${!isResponsePhase && !isLossPhase && isMyTurn ? 'cursor-pointer hover:translate-y-[-5px]' : ''}`} 
               style={seatPositions[i % seatPositions.length] as React.CSSProperties}
-              onClick={() => !isChallengePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
+              onClick={() => !isResponsePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
             >
               {selectedTarget === p.id && (
                 <div className="absolute -inset-6 bg-indigo-500/5 rounded-3xl animate-pulse border border-indigo-500/20" />
@@ -404,17 +412,16 @@ export default function CoupBoard() {
           ))}
         </div>
 
-        {/* Move Filter Log - Repositioned to avoid center turn indicator on desktop */}
+        {/* Move Filter Log - Improved for overflow and readability */}
         {gameState.lastMove && (
-          <div className="absolute top-[25%] md:top-auto md:bottom-8 left-1/2 md:left-auto md:right-8 -translate-x-1/2 md:translate-x-0 z-40 w-full max-w-[280px] md:max-w-[320px] px-4">
-            <div className="bg-gray-900/90 backdrop-blur-xl border border-white/10 rounded-[24px] p-3 md:p-4 shadow-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-500">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 text-base shadow-lg flex-shrink-0">
+          <div className="absolute bottom-6 right-6 z-40 w-full max-w-[320px] px-2 pointer-events-none">
+            <div className="bg-gray-900/95 backdrop-blur-xl border border-white/20 rounded-[24px] p-4 shadow-2xl flex items-start gap-3 animate-in slide-in-from-right-4 duration-500 pointer-events-auto">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 text-base shadow-inner flex-shrink-0 mt-0.5">
                 💬
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Last Move</p>
-                <div className="text-[11px] md:text-xs font-medium text-white leading-tight">
-                  <span className="font-bold text-indigo-400">{gameState.lastMove.details.split(' ')[0]}</span>
+                <div className="text-[11px] md:text-xs font-medium text-white/90 leading-relaxed break-words line-clamp-3">
+                  <span className="font-black text-indigo-400 mr-1">{gameState.lastMove.details.split(' ')[0]}</span>
                   {gameState.lastMove.details.substring(gameState.lastMove.details.indexOf(' '))}
                 </div>
               </div>
@@ -435,7 +442,7 @@ export default function CoupBoard() {
               </div>
               <span className="text-xs md:text-sm font-black text-emerald-600 bg-emerald-50 px-3 md:px-4 py-1 md:py-1.5 rounded-xl border border-emerald-100 shadow-sm">{myPlayer?.coins}💰</span>
             </div>
-            <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar py-2">
+            <div className="flex gap-2 md:gap-3 overflow-hidden py-2">
               {myPlayer?.influences?.map((inf, i) => (
                 <div 
                   key={i} 
@@ -465,7 +472,7 @@ export default function CoupBoard() {
               <div className="flex flex-col sm:flex-row gap-4 md:gap-8 max-w-2xl mx-auto w-full">
                 {isActor ? (
                   <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
-                    <p className="text-sm md:text-lg font-bold text-gray-400 animate-pulse">Waiting for responses...</p>
+                    <p className="text-sm md:text-lg font-bold text-gray-400 animate-pulse">Waiting for challenges...</p>
                   </div>
                 ) : hasPassed ? (
                   <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
@@ -474,6 +481,49 @@ export default function CoupBoard() {
                 ) : (
                   <>
                     <ActionButton label="Challenge" onClick={() => handleAction('CHALLENGE')} color="rose" className="flex-1 py-6 md:py-8 text-base md:text-lg" />
+                    <ActionButton label="Pass" onClick={() => handleAction('PASS')} color="default" className="flex-1 py-6 md:py-10 text-base md:text-lg" />
+                  </>
+                )}
+              </div>
+            ) : isBlockPhase ? (
+              <div className="flex flex-col sm:flex-row gap-4 md:gap-8 max-w-2xl mx-auto w-full">
+               {(isTarget || (gameState.pendingAction?.type === 'FOREIGN_AID' && !isActor)) ? (
+                  <>
+                    {gameState.pendingAction?.type === 'STEAL' ? (
+                      <>
+                        <ActionButton label="Block (Captain)" onClick={() => handleAction('BLOCK', undefined, { roleClaimed: 'CAPTAIN' })} color="indigo" icon="🛡️" className="flex-1 py-6 md:py-8" />
+                        <ActionButton label="Block (Ambassador)" onClick={() => handleAction('BLOCK', undefined, { roleClaimed: 'AMBASSADOR' })} color="emerald" icon="📜" className="flex-1 py-6 md:py-8" />
+                      </>
+                    ) : (
+                      <ActionButton 
+                        label={`Block (${gameState.pendingAction?.type === 'FOREIGN_AID' ? 'Duke' : 'Contessa'})`} 
+                        onClick={() => handleAction('BLOCK', undefined, { roleClaimed: gameState.pendingAction?.type === 'FOREIGN_AID' ? 'DUKE' : 'CONTESSA' })} 
+                        color="indigo" 
+                        icon={gameState.pendingAction?.type === 'FOREIGN_AID' ? '👑' : '🏰'} 
+                        className="flex-1 py-6 md:py-8" 
+                      />
+                    )}
+                    <ActionButton label="Pass" onClick={() => handleAction('PASS')} color="default" className="flex-1 py-6 md:py-8" />
+                  </>
+                ) : (
+                  <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
+                    <p className="text-sm md:text-lg font-bold text-gray-400">Waiting for {isActor ? 'the target' : 'others'} to block...</p>
+                  </div>
+                )}
+              </div>
+            ) : isBlockChallengePhase ? (
+              <div className="flex flex-col sm:flex-row gap-4 md:gap-8 max-w-2xl mx-auto w-full">
+                {isBlocker ? (
+                  <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
+                    <p className="text-sm md:text-lg font-bold text-gray-400 animate-pulse">Waiting for challenges to your block...</p>
+                  </div>
+                ) : hasPassed ? (
+                  <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
+                    <p className="text-sm md:text-lg font-bold text-gray-300">You have passed.</p>
+                  </div>
+                ) : (
+                  <>
+                    <ActionButton label="Challenge Block" onClick={() => handleAction('CHALLENGE')} color="rose" className="flex-1 py-6 md:py-8 text-base md:text-lg" />
                     <ActionButton label="Pass" onClick={() => handleAction('PASS')} color="default" className="flex-1 py-6 md:py-8 text-base md:text-lg" />
                   </>
                 )}
@@ -488,10 +538,46 @@ export default function CoupBoard() {
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-4 h-full">
                 <ActionButton label="Income" onClick={() => handleAction('INCOME')} disabled={!isMyTurn} color="emerald" icon="💰" />
                 <ActionButton label="Foreign Aid" onClick={() => handleAction('FOREIGN_AID')} disabled={!isMyTurn} color="emerald" icon="🚢" />
-                <ActionButton label="Coup" onClick={() => handleAction('COUP', selectedTarget!)} disabled={!isMyTurn || (myPlayer?.coins || 0) < 7 || !selectedTarget} color="rose" icon="🔥" />
+                <ActionButton 
+                  label="Coup" 
+                  onClick={() => {
+                    if (!selectedTarget) {
+                      alert('Please select a target first!');
+                      return;
+                    }
+                    handleAction('COUP', selectedTarget);
+                  }} 
+                  disabled={!isMyTurn || (myPlayer?.coins || 0) < 7} 
+                  color="rose" 
+                  icon="🔥" 
+                />
                 <ActionButton label="Tax" onClick={() => handleAction('TAX')} disabled={!isMyTurn} icon="👑" color="indigo" />
-                <ActionButton label="Assassinate" onClick={() => handleAction('ASSASSINATE', selectedTarget!)} disabled={!isMyTurn || (myPlayer?.coins || 0) < 3 || !selectedTarget} icon="🗡️" color="indigo" />
-                <ActionButton label="Steal" onClick={() => handleAction('STEAL', selectedTarget!)} disabled={!isMyTurn || !selectedTarget} icon="🛡️" color="indigo" />
+                <ActionButton 
+                  label="Assassinate" 
+                  onClick={() => {
+                    if (!selectedTarget) {
+                      alert('Please select a target first!');
+                      return;
+                    }
+                    handleAction('ASSASSINATE', selectedTarget);
+                  }} 
+                  disabled={!isMyTurn || (myPlayer?.coins || 0) < 3} 
+                  icon="🗡️" 
+                  color="indigo" 
+                />
+                <ActionButton 
+                  label="Steal" 
+                  onClick={() => {
+                    if (!selectedTarget) {
+                      alert('Please select a target first!');
+                      return;
+                    }
+                    handleAction('STEAL', selectedTarget);
+                  }} 
+                  disabled={!isMyTurn} 
+                  icon="🛡️" 
+                  color="indigo" 
+                />
                 <ActionButton label="Exchange" onClick={() => handleAction('EXCHANGE')} disabled={!isMyTurn} icon="📜" color="indigo" />
               </div>
             )}
@@ -517,7 +603,7 @@ function ActionButton({ label, onClick, disabled, color = 'emerald', icon, class
       disabled={disabled}
       onClick={onClick}
       className={`
-        px-3 py-3 md:py-4 rounded-2xl md:rounded-3xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 shadow-xl active:scale-95
+        px-2 py-2 md:py-3 rounded-xl md:rounded-2xl font-black text-[8px] md:text-[9px] uppercase tracking-wider transition-all flex flex-col items-center justify-center gap-1.5 shadow-xl active:scale-95
         ${disabled
           ? 'bg-gray-50 text-gray-200 border-none cursor-not-allowed opacity-50'
           : styles[color]
@@ -525,7 +611,7 @@ function ActionButton({ label, onClick, disabled, color = 'emerald', icon, class
         ${className}
       `}
     >
-      {icon && <span className="text-xl md:text-2xl leading-none">{icon}</span>}
+      {icon && <span className="text-lg md:text-xl leading-none">{icon}</span>}
       <span className="text-center leading-none inline-block truncate w-full">{label}</span>
     </button>
   );

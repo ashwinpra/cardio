@@ -17,6 +17,11 @@ export function formatActionName(type: string): string {
   }
 }
 
+export function formatRoleName(role: string): string {
+  if (!role || role === 'HIDDEN') return 'Unknown';
+  return role.charAt(0) + role.slice(1).toLowerCase();
+}
+
 export function createDeck(playerCount: number): CoupRole[] {
   const deck: CoupRole[] = [];
   // 3 players: 2 of each role (10 total)
@@ -41,8 +46,20 @@ export function getRequiredRole(actionType: string): CoupRole | '' {
     case 'ASSASSINATE': return 'ASSASSIN';
     case 'STEAL': return 'CAPTAIN';
     case 'EXCHANGE': return 'AMBASSADOR';
-    case 'FOREIGN_AID': return ''; // Can be blocked by Duke, but doesn't require a role to perform
     default: return '';
+  }
+}
+
+export function isBlockable(actionType: string): boolean {
+  return ['FOREIGN_AID', 'STEAL', 'ASSASSINATE'].includes(actionType);
+}
+
+export function getBlockingRoles(actionType: string): CoupRole[] {
+  switch (actionType) {
+    case 'FOREIGN_AID': return ['DUKE'];
+    case 'STEAL': return ['CAPTAIN', 'AMBASSADOR'];
+    case 'ASSASSINATE': return ['CONTESSA'];
+    default: return [];
   }
 }
 
@@ -94,16 +111,16 @@ export function handleBasicAction(state: GameState, actorId: string, type: any, 
   switch (type) {
     case 'INCOME':
       actor.coins += 1;
-      details = `${actor.name} took ${actionLabel} (+1).`;
+      details = `${actor.name} took ${actionLabel} (+1)`;
       break;
     case 'FOREIGN_AID':
       actor.coins += 2;
-      details = `${actor.name} took ${actionLabel} (+2).`;
+      details = `${actor.name} took ${actionLabel} (+2)`;
       break;
     case 'COUP':
       if (actor.coins < 7) return state;
       actor.coins -= 7;
-      details = `${actor.name} performed a ${actionLabel} on ${newState.players.find(p => p.id === targetId)?.name}.`;
+      details = `${actor.name} performed a ${actionLabel} on ${newState.players.find(p => p.id === targetId)?.name}`;
       break;
   }
 
@@ -119,12 +136,16 @@ export function handleBasicAction(state: GameState, actorId: string, type: any, 
   newState.lastMove = move;
   newState.moveLog = [move, ...state.moveLog];
 
-  if (type !== 'FOREIGN_AID') { // Foreign Aid is the only basic action that can be blocked
+  if (type === 'INCOME') {
     newState.activePlayerIndex = (state.activePlayerIndex + 1) % state.players.length;
     // Skip dead players
     while (!newState.players[newState.activePlayerIndex].influences?.some(i => !i.isRevealed)) {
       newState.activePlayerIndex = (newState.activePlayerIndex + 1) % state.players.length;
     }
+  } else if (type === 'COUP') {
+    newState.phase = 'SELECT_INFLUENCE_TO_LOSE';
+    newState.loserId = targetId;
+    newState.resolution = 'ACTION_COMPLETE';
   }
 
   return newState;
