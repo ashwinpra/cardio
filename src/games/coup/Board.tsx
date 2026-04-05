@@ -20,10 +20,14 @@ function InfluenceCard({ role, isRevealed, size = 'normal' }: {
   const isSmall = size === 'small';
   const isHidden = role === 'HIDDEN';
   
+  // Custom fluid dimensions using clamp
+  const widthClass = isSmall ? 'w-[clamp(2.5rem,4vw,3.5rem)]' : 'w-[clamp(4.5rem,8vw,6rem)]';
+  const heightClass = isSmall ? 'h-[clamp(3.5rem,6vw,5rem)]' : 'h-[clamp(6rem,11vw,8rem)]';
+
   if (isHidden) {
     return (
       <div className={`
-        ${isSmall ? 'w-10 h-14' : 'w-14 h-20'} 
+        ${widthClass} ${heightClass}
         bg-[#1f2937] rounded-xl shadow-lg flex items-center justify-center border border-white/10
         relative overflow-hidden
       `}>
@@ -40,12 +44,12 @@ function InfluenceCard({ role, isRevealed, size = 'normal' }: {
 
   return (
     <div className={`
-      ${isSmall ? 'w-14 h-20' : 'w-24 h-32'} 
+      ${widthClass} ${heightClass}
       bg-white rounded-xl shadow-md border-2 flex flex-col items-center justify-center relative transition-all duration-300
       ${!isRevealed ? 'border-gray-100' : ''}
     `} style={{ borderColor: isRevealed ? roleColor : undefined }}>
-      <span className={isSmall ? 'text-2xl' : 'text-4xl'}>{roleIcon}</span>
-      <span className={`${isSmall ? 'text-[7px]' : 'text-[10px]'} font-bold uppercase tracking-tighter mt-1 text-center px-1 break-words leading-tight`} style={{ color: roleColor }}>{role}</span>
+      <span className={isSmall ? 'text-[clamp(1rem,2vw,1.5rem)]' : 'text-[clamp(1.8rem,4vw,2.5rem)]'}>{roleIcon}</span>
+      <span className={`${isSmall ? 'text-[clamp(6px,0.8vw,8px)]' : 'text-[clamp(8px,1vw,10px)]'} font-bold uppercase tracking-tighter mt-1 text-center px-1 break-words leading-tight`} style={{ color: roleColor }}>{role}</span>
       {!isRevealed && (
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-600 rounded-full border-2 border-white shadow-sm" title="Private" />
       )}
@@ -53,34 +57,39 @@ function InfluenceCard({ role, isRevealed, size = 'normal' }: {
   );
 }
 
-function PlayerSeat({ player, isActive, isSelf }: {
-  player: Player; isActive: boolean; isSelf: boolean;
+function PlayerSeat({ player, isActive, isSelf, size = 'normal' }: {
+  player: Player; isActive: boolean; isSelf: boolean; size?: 'normal' | 'compact'
 }) {
   const isAlive = player.influences?.some(i => !i.isRevealed) ?? true;
+  const isCompact = size === 'compact';
 
   return (
-    <div className={`flex flex-col items-center gap-4 transition-all duration-500 ${isActive ? 'scale-110' : ''} ${!isAlive ? 'opacity-30 grayscale blur-[0.5px]' : ''}`}>
+    <div className={`flex ${isCompact ? 'flex-row' : 'flex-col'} items-center gap-2 md:gap-4 transition-all duration-500 ${isActive ? 'scale-105' : ''} ${!isAlive ? 'opacity-30 grayscale blur-[0.5px]' : ''}`}>
       <div className="relative">
-        <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-xl font-bold bg-white shadow-2xl border-2 transition-all
-          ${isActive ? 'border-indigo-500 ring-8 ring-indigo-500/10' : 'border-transparent'}
+        <div className={`
+          ${isCompact ? 'w-12 h-12 rounded-xl' : 'w-[clamp(3.5rem,8vw,4.5rem)] h-[clamp(3.5rem,8vw,4.5rem)] rounded-2xl'} 
+          flex items-center justify-center text-xl font-bold bg-white shadow-2xl border-2 transition-all
+          ${isActive ? 'border-indigo-500 ring-4 md:ring-6 ring-indigo-500/10' : 'border-transparent'}
         `}>
-          <div className="w-16 h-16 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900 shadow-inner text-2xl font-black">
+          <div className={`${isCompact ? 'w-10 h-10 rounded-lg text-lg' : 'w-[clamp(2.5rem,6vw,3.5rem)] h-[clamp(2.5rem,6vw,3.5rem)] rounded-xl text-[clamp(1rem,2vw,1.5rem)]'} bg-gray-50 flex items-center justify-center text-gray-900 shadow-inner font-black`}>
             {player.name.charAt(0).toUpperCase()}
           </div>
         </div>
-        <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-[12px] font-bold px-3 py-1 rounded-xl shadow-xl border-2 border-white flex items-center gap-1">
+        <div className={`absolute -bottom-1 -right-1 bg-emerald-500 text-white font-bold px-1.5 md:px-2 py-0.5 rounded-lg shadow-xl border-2 border-white flex items-center gap-1 ${isCompact ? 'text-[9px]' : 'text-[clamp(9px,1vw,11px)]'}`}>
           {player.coins}💰
         </div>
       </div>
-      <div className="flex flex-col items-center">
-        <span className="text-[12px] font-bold text-gray-900 uppercase tracking-wider bg-white/80 px-4 py-1 rounded-xl backdrop-blur-sm border border-white shadow-sm">
+      <div className={`flex flex-col ${isCompact ? 'items-start' : 'items-center'}`}>
+        <span className={`${isCompact ? 'text-[10px]' : 'text-[clamp(10px,1vw,12px)]'} font-bold text-gray-900 uppercase tracking-wider bg-white/80 px-2 md:px-3 py-0.5 rounded-lg backdrop-blur-sm border border-white shadow-sm truncate max-w-[80px] md:max-w-none`}>
           {player.name} {isSelf ? '(You)' : ''}
         </span>
-        <div className="flex gap-2 mt-3">
-          {player.influences?.map((inf, i) => (
-            <InfluenceCard key={i} role={inf.role} isRevealed={inf.isRevealed} size="small" />
-          ))}
-        </div>
+        {!isCompact && (
+          <div className="flex gap-1 mt-2">
+            {player.influences?.map((inf, i) => (
+              <InfluenceCard key={i} role={inf.role} isRevealed={inf.isRevealed} size="small" />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -250,41 +259,41 @@ export default function CoupBoard() {
 
   // Wide-channel staggered distribution to avoid center North/South axis overlap
   const seatPositions = [
-    { top: '12%', left: '20%' },               // North-West
-    { top: '12%', right: '20%', left: 'auto' }, // North-East
-    { top: '48%', left: '5%', transform: 'translateY(-50%)' },  // West
-    { top: '48%', right: '5%', left: 'auto', transform: 'translateY(-50%)' }, // East
-    { bottom: '40%', left: '20%' },            // South-West
-    { bottom: '40%', right: '20%', left: 'auto' }, // South-East
+    { top: '10%', left: '15%' },               // North-West
+    { top: '10%', right: '15%', left: 'auto' }, // North-East
+    { top: '45%', left: '4%', transform: 'translateY(-50%)' },  // West
+    { top: '45%', right: '4%', left: 'auto', transform: 'translateY(-50%)' }, // East
+    { bottom: '38%', left: '15%' },            // South-West
+    { bottom: '38%', right: '15%', left: 'auto' }, // South-East
   ];
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-['Inter',_sans-serif]">
       {/* Header */}
-      <div className="px-10 py-6 bg-white flex items-center justify-between shadow-sm z-20 border-b border-gray-100">
-        <div className="flex items-center gap-5">
-          <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center text-white shadow-xl">
-             <span className="font-black text-xl">C</span>
+      <div className="px-6 md:px-10 py-4 md:py-6 bg-white flex items-center justify-between shadow-sm z-20 border-b border-gray-100">
+        <div className="flex items-center gap-3 md:gap-5">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:2xl bg-gray-900 flex items-center justify-center text-white shadow-xl">
+             <span className="font-black text-lg md:xl">C</span>
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase font-['Montserrat',_sans-serif]">Coup</h1>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mt-1">Live Table</p>
+          <div className="hidden sm:block">
+            <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight leading-none uppercase font-['Montserrat',_sans-serif]">Coup</h1>
+            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mt-1">Live Table</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <button 
             onClick={() => setIsRulesModalOpen(true)}
-            className="px-6 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold text-sm transition-all border border-gray-100 flex items-center gap-2"
+            className="px-4 md:px-6 py-2 md:py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold text-[10px] md:text-sm transition-all border border-gray-100 flex items-center gap-2"
           >
-            <span>Rules</span> 📜
+            <span className="hidden xs:inline">Rules</span> 📜
           </button>
           <button 
             onClick={() => confirm('Exit game and return to lobby?') && clearSession()}
-            className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs transition-all border border-rose-100"
+            className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[10px] md:text-xs transition-all border border-rose-100"
           >
             Exit
           </button>
-          <div className="font-mono text-xs font-bold text-gray-400 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+          <div className="hidden md:block font-mono text-xs font-bold text-gray-400 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
             {gameState.sessionId}
           </div>
         </div>
@@ -298,7 +307,20 @@ export default function CoupBoard() {
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
         {/* Improved Table Bounds */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[65%] bg-gray-50/50 rounded-[100px] border border-gray-100 pointer-events-none" />
+        <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[65%] bg-gray-50/50 rounded-[100px] border border-gray-100 pointer-events-none" />
+
+        {/* Mobile Opponent Carousel */}
+        <div className="md:hidden flex overflow-x-auto px-6 py-6 gap-4 no-scrollbar border-b border-gray-50 bg-white/50">
+          {gameState.players.filter(p => p.id !== myPlayerId).map((p) => (
+            <div 
+              key={p.id} 
+              className={`flex-shrink-0 transition-all duration-300 ${selectedTarget === p.id ? 'scale-105 ring-2 ring-indigo-500 ring-offset-4 rounded-xl' : ''}`}
+              onClick={() => !isChallengePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
+            >
+              <PlayerSeat player={p} isActive={activePlayer?.id === p.id} isSelf={false} size="compact" />
+            </div>
+          ))}
+        </div>
 
         {isExchangePhase && gameState.exchangeOptions && (
           <ExchangeSelectionOverlay 
@@ -329,62 +351,72 @@ export default function CoupBoard() {
         )}
 
         {/* Center Indicator */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10">
+        <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 w-full px-8 pointer-events-none">
           {isChallengePhase ? (
-            <div className="relative w-36 h-36 flex items-center justify-center">
+            <div className="relative w-24 h-24 md:w-32 md:h-32 mx-auto flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-full shadow-2xl border border-white">
               <svg className="absolute inset-0 w-full h-full -rotate-90">
-                <circle cx="72" cy="72" r="60" fill="none" stroke="#f3f4f6" strokeWidth="4" />
-                <circle cx="72" cy="72" r="60" fill="none" stroke="#6366f1" strokeWidth="4" strokeDasharray={377} strokeDashoffset={377 * (1 - timeLeft / 10)} className="transition-all duration-1000 linear" strokeLinecap="round" />
+                <circle cx="50%" cy="50%" r="42%" fill="none" stroke="#f3f4f6" strokeWidth="3" />
+                <circle cx="50%" cy="50%" r="42%" fill="none" stroke="#6366f1" strokeWidth="3" 
+                  strokeDasharray="264" 
+                  strokeDashoffset={264 * (1 - timeLeft / 10)} 
+                  className="transition-all duration-1000 linear" 
+                  strokeLinecap="round" 
+                />
               </svg>
-              <div className="bg-white rounded-full w-24 h-24 flex flex-col items-center justify-center shadow-2xl border border-gray-50">
-                <p className="text-[7px] text-gray-400 font-bold uppercase tracking-widest">Time</p>
-                <p className="text-3xl font-black text-gray-900 tabular-nums leading-none">{timeLeft}</p>
+              <div className="flex flex-col items-center justify-center">
+                <p className="text-[7px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Time</p>
+                <p className="text-2xl md:text-3xl font-black text-gray-900 tabular-nums leading-none">{timeLeft}</p>
               </div>
             </div>
           ) : isLossPhase ? (
-            <div className="px-14 py-10 rounded-[48px] bg-white border border-gray-100 shadow-2xl flex flex-col items-center animate-pulse">
-              <span className="text-5xl mb-4">⚠️</span>
-              <p className="text-[11px] text-rose-500 font-bold uppercase tracking-widest mb-1">Elimination Phase</p>
-              <p className="text-2xl font-black text-gray-900">
-                {isLoser ? 'Choose a card to lose' : `${gameState.players.find(p => p.id === gameState.loserId)?.name} is choosing...`}
+            <div className="px-6 md:px-10 py-5 md:py-8 rounded-[32px] bg-white border border-gray-100 shadow-2xl flex flex-col items-center animate-pulse mx-auto max-w-sm">
+              <span className="text-2xl md:text-4xl mb-2">⚠️</span>
+              <p className="text-[9px] text-rose-500 font-bold uppercase tracking-widest mb-1">Elimination</p>
+              <p className="text-[clamp(14px,1.5vw,18px)] font-black text-gray-900">
+                {isLoser ? 'Discard a card' : `${gameState.players.find(p => p.id === gameState.loserId)?.name} is discarding...`}
               </p>
             </div>
           ) : (
-            <div className="px-8 py-5 rounded-[32px] bg-white/90 backdrop-blur-xl border border-gray-100 shadow-2xl relative overflow-hidden">
-              <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Current Turn</p>
-              <p className="text-2xl font-black text-gray-900 tracking-tight leading-none h-8 flex items-center justify-center">{activePlayer?.name || 'Waiting'}</p>
-              {isMyTurn && <div className="mt-2 h-1 w-10 bg-indigo-600 mx-auto rounded-full animate-bounce" />}
+            <div className="px-5 md:px-6 py-2.5 md:py-3.5 rounded-[20px] md:rounded-[24px] bg-white/90 backdrop-blur-xl border border-gray-100 shadow-2xl relative overflow-hidden inline-block mx-auto min-w-[120px]">
+              <p className="text-[7px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Turn</p>
+              <p className="text-[clamp(16px,1.8vw,22px)] font-black text-gray-900 tracking-tight leading-none flex items-center justify-center">
+                {activePlayer ? (activePlayer.name.length > 12 ? activePlayer.name.substring(0, 10) + '...' : activePlayer.name) : 'Waiting'}
+              </p>
+              {isMyTurn && <div className="mt-1 h-0.5 w-6 bg-indigo-600 mx-auto rounded-full animate-bounce" />}
             </div>
           )}
         </div>
 
-        {/* Player Seats */}
-        {gameState.players.filter(p => p.id !== myPlayerId).map((p, i) => (
-          <div 
-            key={p.id} 
-            className={`absolute transition-all duration-500 z-10 ${selectedTarget === p.id ? 'scale-110 translate-y-[-10px]' : ''} ${!isChallengePhase && !isLossPhase && isMyTurn ? 'cursor-pointer hover:translate-y-[-5px]' : ''}`} 
-            style={seatPositions[i % seatPositions.length] as React.CSSProperties}
-            onClick={() => !isChallengePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
-          >
-             {selectedTarget === p.id && (
-               <div className="absolute -inset-6 bg-indigo-500/5 rounded-3xl animate-pulse border border-indigo-500/20" />
-             )}
-            <PlayerSeat player={p} isActive={activePlayer?.id === p.id} isSelf={false} />
-          </div>
-        ))}
+        {/* Desktop Player Seats */}
+        <div className="hidden md:block">
+          {gameState.players.filter(p => p.id !== myPlayerId).map((p, i) => (
+            <div 
+              key={p.id} 
+              className={`absolute transition-all duration-500 z-10 ${selectedTarget === p.id ? 'scale-110 translate-y-[-10px]' : ''} ${!isChallengePhase && !isLossPhase && isMyTurn ? 'cursor-pointer hover:translate-y-[-5px]' : ''}`} 
+              style={seatPositions[i % seatPositions.length] as React.CSSProperties}
+              onClick={() => !isChallengePhase && !isLossPhase && isMyTurn && setSelectedTarget(p.id)}
+            >
+              {selectedTarget === p.id && (
+                <div className="absolute -inset-6 bg-indigo-500/5 rounded-3xl animate-pulse border border-indigo-500/20" />
+              )}
+              <PlayerSeat player={p} isActive={activePlayer?.id === p.id} isSelf={false} />
+            </div>
+          ))}
+        </div>
 
-        {/* Move Filter Log */}
+        {/* Move Filter Log - Repositioned to avoid center turn indicator on desktop */}
         {gameState.lastMove && (
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30 w-full max-w-xl px-6">
-            <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-2xl flex items-start gap-5 animate-in fade-in slide-in-from-bottom-8 duration-500">
-              <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center text-white text-xl shadow-lg flex-shrink-0">
+          <div className="absolute top-[25%] md:top-auto md:bottom-8 left-1/2 md:left-auto md:right-8 -translate-x-1/2 md:translate-x-0 z-40 w-full max-w-[280px] md:max-w-[320px] px-4">
+            <div className="bg-gray-900/90 backdrop-blur-xl border border-white/10 rounded-[24px] p-3 md:p-4 shadow-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-500">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 text-base shadow-lg flex-shrink-0">
                 💬
               </div>
-              <div className="flex-1">
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Move Details</p>
-                <p className="text-lg font-bold text-gray-900 leading-tight">
-                  {gameState.lastMove.details}
-                </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Last Move</p>
+                <div className="text-[11px] md:text-xs font-medium text-white leading-tight">
+                  <span className="font-bold text-indigo-400">{gameState.lastMove.details.split(' ')[0]}</span>
+                  {gameState.lastMove.details.substring(gameState.lastMove.details.indexOf(' '))}
+                </div>
               </div>
             </div>
           </div>
@@ -392,25 +424,28 @@ export default function CoupBoard() {
       </div>
 
       {/* Control Bar */}
-      <div className="px-10 py-10 bg-white border-t border-gray-100 shadow-2xl z-20">
-        <div className="flex items-end gap-16 max-w-7xl mx-auto w-full">
-          {/* My Hand */}
-          <div className="hidden lg:flex flex-col gap-5">
+      <div className="px-6 md:px-10 py-6 md:py-10 bg-white border-t border-gray-100 shadow-2xl z-20">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-6 md:gap-10 lg:gap-16 max-w-7xl mx-auto w-full">
+          {/* My Info (Mobile/Desktop) */}
+          <div className="flex flex-col gap-4 md:gap-5">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">My Cards</span>
-              <span className="text-sm font-black text-emerald-600 bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-100 shadow-sm">{myPlayer?.coins}💰</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest">My Identity</span>
+                <span className="text-xs font-bold text-gray-900">{myPlayer?.name}</span>
+              </div>
+              <span className="text-xs md:text-sm font-black text-emerald-600 bg-emerald-50 px-3 md:px-4 py-1 md:py-1.5 rounded-xl border border-emerald-100 shadow-sm">{myPlayer?.coins}💰</span>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar py-2">
               {myPlayer?.influences?.map((inf, i) => (
                 <div 
                   key={i} 
                   className={`
-                    transition-all duration-300
-                    ${isLossPhase && isLoser && !inf.isRevealed ? 'cursor-pointer hover:scale-110 hover:translate-y-[-10px] ring-4 ring-rose-500/10 rounded-2xl' : ''}
+                    transition-all duration-300 flex-shrink-0
+                    ${isLossPhase && isLoser && !inf.isRevealed ? 'cursor-pointer scale-105 ring-4 ring-rose-500/10 rounded-2xl' : ''}
                   `}
                   onClick={() => isLossPhase && isLoser && !inf.isRevealed && handleAction('LOSE_INFLUENCE', undefined, { influenceIndex: i })}
                 >
-                  <InfluenceCard role={inf.role} isRevealed={inf.isRevealed} />
+                  <InfluenceCard role={inf.role} isRevealed={inf.isRevealed} size={window.innerWidth < 768 ? 'small' : 'normal'} />
                 </div>
               ))}
             </div>
@@ -427,36 +462,36 @@ export default function CoupBoard() {
             </div>
 
             {isChallengePhase ? (
-              <div className="flex gap-8 max-w-2xl mx-auto w-full">
+              <div className="flex flex-col sm:flex-row gap-4 md:gap-8 max-w-2xl mx-auto w-full">
                 {isActor ? (
-                  <div className="flex-1 py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
-                    <p className="text-lg font-bold text-gray-400 animate-pulse">Waiting for responses to your claim...</p>
+                  <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
+                    <p className="text-sm md:text-lg font-bold text-gray-400 animate-pulse">Waiting for responses...</p>
                   </div>
                 ) : hasPassed ? (
-                  <div className="flex-1 py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
-                    <p className="text-lg font-bold text-gray-300">You have passed.</p>
+                  <div className="flex-1 py-6 md:py-10 bg-gray-50 border border-gray-100 rounded-3xl text-center shadow-inner">
+                    <p className="text-sm md:text-lg font-bold text-gray-300">You have passed.</p>
                   </div>
                 ) : (
                   <>
-                    <ActionButton label="Challenge" onClick={() => handleAction('CHALLENGE')} color="rose" className="flex-1 py-8 text-lg" />
-                    <ActionButton label="Pass" onClick={() => handleAction('PASS')} color="default" className="flex-1 py-8 text-lg" />
+                    <ActionButton label="Challenge" onClick={() => handleAction('CHALLENGE')} color="rose" className="flex-1 py-6 md:py-8 text-base md:text-lg" />
+                    <ActionButton label="Pass" onClick={() => handleAction('PASS')} color="default" className="flex-1 py-6 md:py-8 text-base md:text-lg" />
                   </>
                 )}
               </div>
             ) : isLossPhase ? (
-              <div className="flex-1 py-10 bg-rose-50/50 border border-rose-100 rounded-3xl text-center shadow-inner">
-                <p className="text-xl font-black text-rose-600 uppercase tracking-widest">
-                  {isLoser ? 'Select an influence to eliminate' : `${gameState.players.find(p => p.id === gameState.loserId)?.name} is discarding...`}
+              <div className="flex-1 py-6 md:py-10 bg-rose-50/50 border border-rose-100 rounded-3xl text-center shadow-inner">
+                <p className="text-base md:text-xl font-black text-rose-600 uppercase tracking-widest">
+                  {isLoser ? 'Select influence to lose' : `Waiting for ${gameState.players.find(p => p.id === gameState.loserId)?.name}...`}
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4 h-full">
-                <ActionButton label="Income (+1)" onClick={() => handleAction('INCOME')} disabled={!isMyTurn} color="emerald" icon="💰" />
-                <ActionButton label="Foreign Aid (+2)" onClick={() => handleAction('FOREIGN_AID')} disabled={!isMyTurn} color="emerald" icon="🚢" />
-                <ActionButton label="Coup (-7)" onClick={() => handleAction('COUP', selectedTarget!)} disabled={!isMyTurn || (myPlayer?.coins || 0) < 7 || !selectedTarget} color="rose" icon="🔥" />
-                <ActionButton label="Tax (+3)" onClick={() => handleAction('TAX')} disabled={!isMyTurn} icon="👑" color="indigo" />
-                <ActionButton label="Assassinate (-3)" onClick={() => handleAction('ASSASSINATE', selectedTarget!)} disabled={!isMyTurn || (myPlayer?.coins || 0) < 3 || !selectedTarget} icon="🗡️" color="indigo" />
-                <ActionButton label="Steal (+2)" onClick={() => handleAction('STEAL', selectedTarget!)} disabled={!isMyTurn || !selectedTarget} icon="🛡️" color="indigo" />
+              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-4 h-full">
+                <ActionButton label="Income" onClick={() => handleAction('INCOME')} disabled={!isMyTurn} color="emerald" icon="💰" />
+                <ActionButton label="Foreign Aid" onClick={() => handleAction('FOREIGN_AID')} disabled={!isMyTurn} color="emerald" icon="🚢" />
+                <ActionButton label="Coup" onClick={() => handleAction('COUP', selectedTarget!)} disabled={!isMyTurn || (myPlayer?.coins || 0) < 7 || !selectedTarget} color="rose" icon="🔥" />
+                <ActionButton label="Tax" onClick={() => handleAction('TAX')} disabled={!isMyTurn} icon="👑" color="indigo" />
+                <ActionButton label="Assassinate" onClick={() => handleAction('ASSASSINATE', selectedTarget!)} disabled={!isMyTurn || (myPlayer?.coins || 0) < 3 || !selectedTarget} icon="🗡️" color="indigo" />
+                <ActionButton label="Steal" onClick={() => handleAction('STEAL', selectedTarget!)} disabled={!isMyTurn || !selectedTarget} icon="🛡️" color="indigo" />
                 <ActionButton label="Exchange" onClick={() => handleAction('EXCHANGE')} disabled={!isMyTurn} icon="📜" color="indigo" />
               </div>
             )}
@@ -482,7 +517,7 @@ function ActionButton({ label, onClick, disabled, color = 'emerald', icon, class
       disabled={disabled}
       onClick={onClick}
       className={`
-        px-4 py-5 rounded-3xl font-black text-[10px] uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-3 shadow-xl active:scale-95
+        px-3 py-3 md:py-4 rounded-2xl md:rounded-3xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 shadow-xl active:scale-95
         ${disabled
           ? 'bg-gray-50 text-gray-200 border-none cursor-not-allowed opacity-50'
           : styles[color]
@@ -490,8 +525,8 @@ function ActionButton({ label, onClick, disabled, color = 'emerald', icon, class
         ${className}
       `}
     >
-      {icon && <span className="text-2xl leading-none">{icon}</span>}
-      <span className="text-center leading-none inline-block">{label}</span>
+      {icon && <span className="text-xl md:text-2xl leading-none">{icon}</span>}
+      <span className="text-center leading-none inline-block truncate w-full">{label}</span>
     </button>
   );
 }

@@ -232,5 +232,5 @@ app.get('/*splat', (_req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`CardGames server listening on port ${PORT}`);
+  console.log(`Cardio server listening on port ${PORT}`);
 });

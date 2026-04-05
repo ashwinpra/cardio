@@ -34,19 +34,19 @@ export default function Lobby() {
   return (
     <div className="min-h-screen flex flex-col p-6 md:p-8 bg-[#f8f9fa]">
       {/* Header */}
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
-          <p className="text-[11px] font-bold text-[#6c7a71] uppercase tracking-[0.2em] mb-2">
+          <p className="text-[10px] md:text-[11px] font-bold text-[#6c7a71] uppercase tracking-[0.2em] mb-2">
             Lobby · {gameState.gameType}
           </p>
           <div className="flex items-center gap-2.5">
-            <span className="text-[11px] text-[#bbcabf] uppercase tracking-[0.1em] font-medium">Session Code</span>
-            <span className="text-xl font-mono font-bold text-[#006c49] px-4 py-1.5 rounded-xl bg-emerald-50 tracking-widest border border-emerald-100">
+            <span className="text-[10px] md:text-[11px] text-[#bbcabf] uppercase tracking-[0.1em] font-medium">Session Code</span>
+            <span className="text-lg md:text-xl font-mono font-bold text-[#006c49] px-4 py-1.5 rounded-xl bg-emerald-50 tracking-widest border border-emerald-100">
               {gameState.sessionId}
             </span>
           </div>
         </div>
-        <div className="text-right flex flex-col items-end gap-2">
+        <div className="w-full sm:w-auto text-left sm:text-right flex flex-row-reverse sm:flex-col items-center sm:items-end justify-between sm:justify-end gap-2">
           <button 
             onClick={() => {
               if (confirm('Are you sure you want to leave this session?')) {
@@ -58,8 +58,8 @@ export default function Lobby() {
             Leave Session
           </button>
           <div>
-            <p className="text-[11px] text-[#bbcabf] uppercase tracking-[0.1em] font-medium">Participants</p>
-            <p className="text-3xl font-black text-[#191c1d]">
+            <p className="text-[10px] md:text-[11px] text-[#bbcabf] uppercase tracking-[0.1em] font-medium">Participants</p>
+            <p className="text-2xl md:text-3xl font-black text-[#191c1d]">
               {gameState.players.length}<span className="text-sm text-[#bbcabf] font-medium ml-1">/{isLiterature ? '8' : '6'}</span>
             </p>
           </div>
@@ -85,9 +85,9 @@ export default function Lobby() {
           )}
 
           {/* Join / Start Panel */}
-          <div className="rounded-3xl p-8 flex flex-col bg-white border border-emerald-100 shadow-[0_8px_40px_rgba(16,185,129,0.06)] relative overflow-hidden">
+          <div className="rounded-[32px] p-6 flex flex-col bg-white border border-emerald-100 shadow-[0_8px_40px_rgba(16,185,129,0.06)] relative overflow-hidden order-first md:order-none">
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-              <span className="text-8xl">🎮</span>
+              <span className="text-6xl md:text-8xl">🎮</span>
             </div>
             
             {!isJoined ? (

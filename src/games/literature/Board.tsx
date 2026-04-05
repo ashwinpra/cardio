@@ -44,13 +44,17 @@ function PlayingCard({ card, selected, onClick, size = 'normal' }: {
   const isSmall = size === 'small';
   const color = red ? '#dc2626' : '#000000';
 
+  // Fluid dimensions using clamp
+  const widthClass = isSmall ? 'w-[clamp(42px,5vw,52px)]' : 'w-[clamp(54px,7vw,64px)]';
+  const heightClass = isSmall ? 'h-[clamp(60px,7vw,72px)]' : 'h-[clamp(76px,10vw,88px)]';
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={`
         relative flex-shrink-0 overflow-hidden bg-white
-        ${isSmall ? 'w-[48px] h-[68px]' : 'w-[60px] h-[84px]'}
+        ${widthClass} ${heightClass}
         rounded-lg cursor-pointer select-none
         transition-all duration-200 ease-out
         ${selected
@@ -59,18 +63,18 @@ function PlayingCard({ card, selected, onClick, size = 'normal' }: {
       `}
     >
       {/* Top-left */}
-      <div className={`absolute top-0.5 left-1 leading-none ${isSmall ? 'text-[10px]' : 'text-xs'} font-bold`} style={{ color }}>
+      <div className={`absolute top-0.5 left-1 leading-none ${isSmall ? 'text-[9px]' : 'text-xs'} font-bold`} style={{ color }}>
         <div>{rank}</div>
-        <div className={isSmall ? 'text-[9px]' : 'text-[10px]'}>{symbol}</div>
+        <div className={isSmall ? 'text-[8px]' : 'text-[9px]'}>{symbol}</div>
       </div>
       {/* Center */}
-      <div className={`absolute inset-0 flex items-center justify-center ${isSmall ? 'text-lg' : 'text-xl'}`} style={{ color }}>
+      <div className={`absolute inset-0 flex items-center justify-center ${isSmall ? 'text-base' : 'text-xl'}`} style={{ color }}>
         {symbol}
       </div>
       {/* Bottom-right */}
-      <div className={`absolute bottom-0.5 right-1 leading-none rotate-180 ${isSmall ? 'text-[10px]' : 'text-xs'} font-bold`} style={{ color }}>
+      <div className={`absolute bottom-0.5 right-1 leading-none rotate-180 ${isSmall ? 'text-[9px]' : 'text-xs'} font-bold`} style={{ color }}>
         <div>{rank}</div>
-        <div className={isSmall ? 'text-[9px]' : 'text-[10px]'}>{symbol}</div>
+        <div className={isSmall ? 'text-[8px]' : 'text-[9px]'}>{symbol}</div>
       </div>
     </button>
   );
@@ -78,23 +82,29 @@ function PlayingCard({ card, selected, onClick, size = 'normal' }: {
 
 // ─── Player Seat ─────────────────────────────────────────
 
-function PlayerSeat({ player, isActive, cardCount, isTeamA }: {
-  player: Player; isActive: boolean; cardCount: number; isTeamA: boolean;
+function PlayerSeat({ player, isActive, cardCount, isTeamA, size = 'normal' }: {
+  player: Player; isActive: boolean; cardCount: number; isTeamA: boolean; size?: 'normal' | 'compact'
 }) {
+  const isCompact = size === 'compact';
+
   return (
-    <div className={`flex flex-col items-center gap-1 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`}>
+    <div className={`flex ${isCompact ? 'flex-row' : 'flex-col'} items-center gap-1.5 md:gap-1 transition-all duration-300 ${isActive ? 'scale-105' : ''}`}>
       <div
-        className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
+        className={`
+          ${isCompact ? 'w-8 h-8 text-xs' : 'w-[clamp(2.5rem,5vw,3rem)] h-[clamp(2.5rem,5vw,3rem)] text-[clamp(12px,1.2vw,16px)]'}
+          rounded-full flex items-center justify-center font-bold
           ${isTeamA ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}
-          ${isActive ? (isTeamA ? 'ring-2 ring-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.3)]' : 'ring-2 ring-rose-400 shadow-[0_0_16px_rgba(244,63,94,0.3)]') : ''}
+          ${isActive ? (isTeamA ? 'ring-2 ring-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.2)]' : 'ring-2 ring-rose-400 shadow-[0_0_16px_rgba(244,63,94,0.2)]') : ''}
         `}
       >
         {player.name.charAt(0).toUpperCase()}
       </div>
-      <span className="text-[11px] font-medium text-[#3c4a42] truncate max-w-[80px]">{player.name}</span>
-      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${isTeamA ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
-        {cardCount}
-      </span>
+      <div className={`flex flex-col ${isCompact ? 'items-start' : 'items-center'} min-w-0`}>
+        <span className={`${isCompact ? 'text-[10px]' : 'text-[clamp(10px,1vw,11px)]'} font-medium text-[#3c4a42] truncate max-w-[60px] md:max-w-[80px]`}>{player.name}</span>
+        <span className={`text-[clamp(8px,0.8vw,10px)] px-1.5 py-0.5 rounded-full font-semibold ${isTeamA ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
+          {cardCount}
+        </span>
+      </div>
     </div>
   );
 }
@@ -296,12 +306,12 @@ export default function GameBoard() {
 
   const seatPositions = [
     { top: '8%', left: '50%', transform: 'translateX(-50%)' },
-    { top: '22%', left: '10%' },
-    { top: '22%', right: '10%', left: 'auto' },
-    { top: '52%', left: '6%' },
-    { top: '52%', right: '6%', left: 'auto' },
-    { top: '72%', left: '22%' },
-    { top: '72%', right: '22%', left: 'auto' },
+    { top: '22%', left: '12%' },
+    { top: '22%', right: '12%', left: 'auto' },
+    { top: '50%', left: '8%' },
+    { top: '50%', right: '8%', left: 'auto' },
+    { top: '68%', left: '25%' },
+    { top: '68%', right: '25%', left: 'auto' },
   ];
 
   return (
@@ -309,61 +319,74 @@ export default function GameBoard() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Score Bar */}
-        <div className="flex items-center justify-between px-6 py-3 bg-white flex-shrink-0 shadow-[0_1px_0_#edeeef]">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Team A</span>
-              <span className="text-xl font-bold text-[#191c1d] ml-0.5">{gameState.scores.teamA}</span>
+        <div className="flex items-center justify-between px-4 md:px-6 py-2 md:py-3 bg-white flex-shrink-0 shadow-[0_1px_0_#edeeef] z-20">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
+              <span className="text-[10px] md:text-xs font-semibold text-emerald-600 uppercase tracking-wider hidden xs:inline">Team A</span>
+              <span className="text-lg md:text-xl font-bold text-[#191c1d] ml-0.5">{gameState.scores.teamA}</span>
             </div>
             <span className="text-[#d9dadb]">·</span>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-rose-500" />
-              <span className="text-xs font-semibold text-rose-500 uppercase tracking-wider">Team B</span>
-              <span className="text-xl font-bold text-[#191c1d] ml-0.5">{gameState.scores.teamB}</span>
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500" />
+              <span className="text-[10px] md:text-xs font-semibold text-rose-500 uppercase tracking-wider hidden xs:inline">Team B</span>
+              <span className="text-lg md:text-xl font-bold text-[#191c1d] ml-0.5">{gameState.scores.teamB}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-[#006c49] px-2 py-0.5 rounded-md bg-emerald-50">
+          <div className="flex items-center gap-2 md:gap-4">
+             <span className="hidden sm:inline text-xs font-mono font-bold text-[#006c49] px-2 py-0.5 rounded-md bg-emerald-50">
               {gameState.sessionId}
             </span>
+            <button 
+              onClick={() => confirm('Exit game?') && clearSession()}
+              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-all"
+            >
+              Exit
+            </button>
           </div>
-          <button 
-            onClick={() => confirm('Exit game?') && clearSession()}
-            className="px-3 py-1 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 text-[10px] font-bold uppercase tracking-wider transition-all"
-          >
-            Exit
-          </button>
         </div>
 
         {/* Table */}
         <div className="flex-1 relative overflow-hidden"
           style={{ background: 'radial-gradient(ellipse at 50% 45%, #d1fae5 0%, #ecfdf5 40%, #f8f9fa 100%)' }}>
 
-          {/* Center */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10">
-            <div className="px-6 py-4 rounded-2xl bg-white/80 backdrop-blur-md shadow-[0_4px_24px_rgba(25,28,29,0.06)]">
-              <p className="text-[10px] text-[#6c7a71] uppercase tracking-[0.15em] mb-0.5">Current Turn</p>
-              <p className="text-xl font-bold text-[#191c1d]">{activePlayer?.name || '...'}</p>
-              {isMyTurn && <p className="text-xs text-emerald-600 mt-1 animate-pulse font-medium">Your move</p>}
+          {/* Mobile Opponent Carousel */}
+          <div className="md:hidden flex overflow-x-auto px-4 py-4 gap-3 no-scrollbar absolute top-0 left-0 w-full z-10 bg-white/20 backdrop-blur-sm border-b border-white/40">
+            {otherPlayers.map((p: any) => (
+              <div key={p.id} className="flex-shrink-0">
+                <PlayerSeat player={p} isActive={activePlayer?.id === p.id} cardCount={cardCounts[p.id] || 0} isTeamA={p.team === 'TEAM_A'} size="compact" />
+              </div>
+            ))}
+          </div>
+
+          {/* Center Indicator */}
+          <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 w-full px-8 pointer-events-none">
+            <div className="px-5 md:px-6 py-2.5 md:py-3.5 rounded-xl md:2xl bg-white/80 backdrop-blur-md shadow-[0_4px_24px_rgba(25,28,29,0.06)] border border-white/50 inline-block mx-auto min-w-[120px]">
+              <p className="text-[8px] md:text-[9px] text-[#6c7a71] uppercase tracking-[0.15em] leading-none mb-1">Turn</p>
+              <p className="text-[clamp(16px,1.8vw,20px)] font-bold text-[#191c1d] leading-none">
+                {activePlayer ? (activePlayer.name.length > 12 ? activePlayer.name.substring(0, 10) + '...' : activePlayer.name) : '...'}
+              </p>
+              {isMyTurn && <p className="text-[clamp(9px,1vw,11px)] text-emerald-600 mt-1 animate-pulse font-medium leading-none">Your move</p>}
             </div>
           </div>
 
-          {/* Seats */}
-          {otherPlayers.map((p: any, i: number) => (
-            <div key={p.id} className="absolute" style={seatPositions[i % seatPositions.length] as React.CSSProperties}>
-              <PlayerSeat player={p} isActive={activePlayer?.id === p.id} cardCount={cardCounts[p.id] || 0} isTeamA={p.team === 'TEAM_A'} />
-            </div>
-          ))}
+          {/* Desktop Seats */}
+          <div className="hidden md:block">
+            {otherPlayers.map((p: any, i: number) => (
+              <div key={p.id} className="absolute" style={seatPositions[i % seatPositions.length] as React.CSSProperties}>
+                <PlayerSeat player={p} isActive={activePlayer?.id === p.id} cardCount={cardCounts[p.id] || 0} isTeamA={p.team === 'TEAM_A'} />
+              </div>
+            ))}
+          </div>
 
-          {/* Last Move Overlay */}
+          {/* Last Move Overlay - Repositioned to avoid center clashing */}
           {gameState.lastMove && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-full max-w-sm px-4">
-              <div className="bg-white/90 backdrop-blur-md border border-emerald-100 rounded-2xl p-3 shadow-[0_8px_32px_rgba(16,185,129,0.12)] flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className={`w-1.5 h-8 rounded-full shrink-0 ${gameState.lastMove.success ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+            <div className="absolute top-[28%] md:top-auto md:bottom-8 left-1/2 md:left-auto md:right-8 -translate-x-1/2 md:translate-x-0 z-40 w-full max-w-[280px] md:max-w-[320px] px-4">
+              <div className="bg-[#191c1d]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 md:p-3.5 shadow-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-500">
+                <div className={`w-1 h-6 md:h-8 rounded-full shrink-0 ${gameState.lastMove.success ? 'bg-emerald-400' : 'bg-rose-400'}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold text-[#bbcabf] uppercase tracking-wider mb-0.5">Last Move</p>
-                  <p className="text-xs font-medium text-[#3c4a42] leading-tight">
+                  <p className="text-[8px] font-bold text-[#6c7a71] uppercase tracking-wider mb-0.5">Last Move</p>
+                  <p className="text-[10px] md:text-xs font-medium text-white leading-tight">
                     {gameState.lastMove.details}
                   </p>
                 </div>
@@ -373,10 +396,10 @@ export default function GameBoard() {
 
           {/* Books */}
           {gameState.books.length > 0 && (
-            <div className="absolute bottom-3 left-4 flex gap-1.5 flex-wrap max-w-[300px]">
+            <div className="absolute bottom-1 right-2 md:bottom-3 md:left-4 flex gap-1 flex-wrap max-w-[120px] xs:max-w-none justify-end md:justify-start pointer-events-none">
               {gameState.books.map((b: any, i: number) => (
-                <span key={i} className={`text-[9px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider
-                  ${b.team === 'TEAM_A' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
+                <span key={i} className={`text-[7px] md:text-[9px] px-1.5 md:px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider shadow-sm
+                  ${b.team === 'TEAM_A' ? 'bg-emerald-100/90 text-emerald-700' : 'bg-rose-100/90 text-rose-600'}`}>
                   {HALF_SUIT_LABELS[b.halfSuit]}
                 </span>
               ))}
@@ -384,38 +407,42 @@ export default function GameBoard() {
           )}
         </div>
 
-        {/* Hand */}
-        <div className="px-5 py-4 bg-white flex-shrink-0 shadow-[0_-1px_0_#edeeef]">
-          <div className="flex items-end gap-4">
+        {/* Hand & Actions */}
+        <div className="px-4 md:px-5 py-3 md:py-4 bg-white flex-shrink-0 shadow-[0_-1px_0_#edeeef] z-20">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4 md:gap-6 max-w-7xl mx-auto w-full">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] text-[#6c7a71] uppercase tracking-[0.1em] font-semibold">Your Hand</span>
-                <span className="text-[10px] text-[#bbcabf]">· {myHand.length} cards</span>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-[#6c7a71] uppercase tracking-[0.1em] font-bold">Your Hand</span>
+                  <span className="text-[10px] text-[#bbcabf]">· {myHand.length} cards</span>
+                </div>
+                <span className="xs:hidden text-[9px] font-bold text-emerald-600 uppercase">Swipe for more →</span>
               </div>
-              <div className="flex gap-5 flex-wrap">
+              
+              <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-1">
                 {Object.entries(groupedHand).map(([hs, cards]) => (
-                  <div key={hs}>
-                    <span className="text-[9px] text-[#bbcabf] uppercase tracking-wider block mb-1">{HALF_SUIT_LABELS[hs]}</span>
-                    <div className="flex gap-1">
-                      {cards.map(c => <PlayingCard key={cardKey(c)} card={c} />)}
+                  <div key={hs} className="flex-shrink-0">
+                    <span className="text-[8px] md:text-[9px] text-[#bbcabf] font-bold uppercase tracking-wider block mb-1.5">{HALF_SUIT_LABELS[hs]}</span>
+                    <div className="flex gap-1.5">
+                      {cards.map(c => <PlayingCard key={cardKey(c)} card={c} size="small" />)}
                     </div>
                   </div>
                 ))}
-                {myHand.length === 0 && <p className="text-xs text-[#bbcabf] italic py-4">No cards in hand</p>}
+                {myHand.length === 0 && <p className="text-xs text-[#bbcabf] italic py-2 md:py-4">No cards in hand</p>}
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col gap-2 flex-shrink-0 pb-1">
+            <div className="flex sm:flex-col gap-2 flex-shrink-0">
               <button disabled={!isMyTurn} onClick={() => setShowAskModal(true)}
-                className="px-6 py-2.5 rounded-full font-semibold text-xs uppercase tracking-wider transition-all
-                  disabled:opacity-20 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md"
+                className="flex-1 sm:flex-none px-6 py-3.5 sm:py-2.5 rounded-xl sm:rounded-full font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all
+                  disabled:opacity-20 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md active:scale-95"
                 style={{ background: 'linear-gradient(180deg, #10b981, #006c49)' }}>
                 Ask Card
               </button>
               <button disabled={!isMyTurn} onClick={() => setShowClaimModal(true)}
-                className="px-6 py-2.5 rounded-full font-semibold text-xs uppercase tracking-wider transition-all
-                  disabled:opacity-20 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md"
+                className="flex-1 sm:flex-none px-6 py-3.5 sm:py-2.5 rounded-xl sm:rounded-full font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all
+                  disabled:opacity-20 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md active:scale-95"
                 style={{ background: 'linear-gradient(180deg, #f59e0b, #d97706)' }}>
                 Claim Book
               </button>

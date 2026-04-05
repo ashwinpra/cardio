@@ -6,7 +6,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length < 3) return { error: 'Need at least 3 players to start' };
+      if (state.players.length < 1) return { error: 'Need at least 1 player to test' };
       if (state.players.length > 6) return { error: 'Maximum 6 players allowed' };
       return { state: CoupLogic.setupCoup(state) };
 
@@ -25,7 +25,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
         // Cost Checks
         if (actionType === 'ASSASSINATE' && actor.coins < 3) return { error: 'Not enough coins for Assassination' };
         if (actionType === 'ASSASSINATE') actor.coins -= 3;
-        
+
         const serverTimestamp = Date.now();
         state.phase = 'WAITING_FOR_CHALLENGE';
         state.pendingAction = {
@@ -62,7 +62,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
       // 3. Challenge Action
       if (actionType === 'CHALLENGE') {
         if (!state.pendingAction || state.phase !== 'WAITING_FOR_CHALLENGE') return { state };
-        
+
         const action = state.pendingAction;
         const requiredRole = CoupLogic.getRequiredRole(action.type);
         const challengedActor = state.players.find((p: any) => p.id === action.actorId);
@@ -73,7 +73,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
           state.phase = 'SELECT_INFLUENCE_TO_LOSE';
           state.loserId = actorId; // The challenger
           state.resolution = 'CHALLENGE_FAILED'; // Actor was telling the truth
-          
+
           // Actor swaps the card
           const roleIndex = challengedActor.influences.findIndex((i: any) => !i.isRevealed && i.role === requiredRole);
           const oldRole = challengedActor.influences[roleIndex].role;
@@ -110,13 +110,13 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
       // 5. Select Influence to Lose
       if (actionType === 'LOSE_INFLUENCE') {
         if (state.phase !== 'SELECT_INFLUENCE_TO_LOSE' || state.loserId !== actorId) return { state };
-        
+
         const { influenceIndex } = data;
         const loser = state.players.find((p: any) => p.id === actorId);
         if (loser.influences[influenceIndex].isRevealed) return { state };
 
         loser.influences[influenceIndex].isRevealed = true;
-        
+
         // After influence is lost, check if we resolve the pending action
         if (state.resolution === 'CHALLENGE_FAILED') {
           // Actor was right, action resolves
@@ -133,11 +133,11 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
       // 6. Select Exchange Cards
       if (actionType === 'FINALIZE_EXCHANGE') {
         if (state.phase !== 'SELECTING_EXCHANGE_CARDS' || state.activePlayerIndex !== state.players.findIndex((p: any) => p.id === actorId)) return { state };
-        
+
         const { selectedRoles } = data;
         const actor = state.players.find((p: any) => p.id === actorId);
         const unrevealedCount = actor.influences.filter((i: any) => !i.isRevealed).length;
-        
+
         if (selectedRoles.length !== unrevealedCount) return { error: `Must select exactly ${unrevealedCount} cards` };
 
         // 1. Return all non-selected cards to deck
@@ -146,7 +146,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
           const idx = currentOptions.indexOf(role);
           if (idx > -1) currentOptions.splice(idx, 1);
         });
-        
+
         state.deck.push(...currentOptions);
         CoupLogic.shuffle(state.deck);
 
@@ -176,7 +176,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
 function moveToNextTurn(state: any) {
   const alivePlayers = state.players.filter((p: any) => p.influences.some((i: any) => !i.isRevealed));
-  
+
   if (alivePlayers.length <= 1) {
     state.phase = 'GAME_OVER';
     state.winner = alivePlayers[0]?.id;
@@ -240,7 +240,7 @@ function resolveAction(state: any, broadcastState: (sid: string) => void) {
   if (type === 'EXCHANGE') {
     const unrevealedRoles = actor.influences.filter((i: any) => !i.isRevealed).map((i: any) => i.role);
     const drawnRoles = [state.deck.shift(), state.deck.shift()];
-    
+
     state.lastMove.details = `${actor.name} is performing an Exchange.`;
     state.exchangeOptions = [...unrevealedRoles, ...drawnRoles];
     state.phase = 'SELECTING_EXCHANGE_CARDS';

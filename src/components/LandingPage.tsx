@@ -8,14 +8,14 @@ export default function LandingPage() {
   const [selectedGame, setSelectedGame] = useState<GameType>('LITERATURE');
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-[#f8f9fa]">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 md:p-8 bg-[#f8f9fa]">
       {/* Title */}
-      <div className="text-center mb-14">
-        <h1 className="text-7xl font-black text-[#191c1d] mb-3 tracking-[-0.04em] uppercase italic">
-          CardGames
+      <div className="text-center mb-8 md:mb-14">
+        <h1 className="text-5xl md:text-7xl font-black text-[#191c1d] mb-2 md:mb-3 tracking-[-0.04em] uppercase italic">
+          Cardio
         </h1>
-        <p className="text-base text-[#6c7a71] max-w-sm mx-auto leading-relaxed">
-          Oonga Boonga
+        <p className="text-sm md:text-base text-[#6c7a71] max-w-sm mx-auto leading-relaxed font-medium px-4">
+          The ultimate heart-racing card studio
         </p>
       </div>
 

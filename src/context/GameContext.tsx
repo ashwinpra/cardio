@@ -100,9 +100,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem('cardgames_sessionId');
-    localStorage.removeItem('cardgames_playerId');
-    localStorage.removeItem('cardgames_playerName');
+    localStorage.removeItem('cardio_sessionId');
+    localStorage.removeItem('cardio_playerId');
+    localStorage.removeItem('cardio_playerName');
     setGameState(null);
     setMyPlayerId(null);
     if (wsRef.current) {
@@ -113,22 +113,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Persistence: Save to localStorage
   useEffect(() => {
     if (gameState?.sessionId) {
-      localStorage.setItem('cardgames_sessionId', gameState.sessionId);
+      localStorage.setItem('cardio_sessionId', gameState.sessionId);
     }
     if (myPlayerId) {
-      localStorage.setItem('cardgames_playerId', myPlayerId);
+      localStorage.setItem('cardio_playerId', myPlayerId);
       const me = gameState?.players.find(p => p.id === myPlayerId);
       if (me?.name) {
-        localStorage.setItem('cardgames_playerName', me.name);
+        localStorage.setItem('cardio_playerName', me.name);
       }
     }
   }, [gameState?.sessionId, gameState?.players, myPlayerId]);
 
   // Persistence: Auto-reconnect on mount
   useEffect(() => {
-    const savedSessionId = localStorage.getItem('cardgames_sessionId');
-    const savedPlayerId = localStorage.getItem('cardgames_playerId');
-    const savedPlayerName = localStorage.getItem('cardgames_playerName');
+    const savedSessionId = localStorage.getItem('cardio_sessionId');
+    const savedPlayerId = localStorage.getItem('cardio_playerId');
+    const savedPlayerName = localStorage.getItem('cardio_playerName');
 
     if (savedSessionId && !gameState) {
       initWs((s) => {
