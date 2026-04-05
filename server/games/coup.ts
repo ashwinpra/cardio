@@ -6,7 +6,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length < 1) return { error: 'Need at least 1 player to test' };
+      if (state.players.length < 3) return { error: 'Need at least 3 players to start' };
       if (state.players.length > 6) return { error: 'Maximum 6 players allowed' };
       return { state: CoupLogic.setupCoup(state) };
 
