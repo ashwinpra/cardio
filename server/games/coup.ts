@@ -46,7 +46,29 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
         if (actionType === 'ASSASSINATE') actor.coins -= 3;
 
         const serverTimestamp = Date.now();
-        state.phase = 'WAITING_FOR_CHALLENGE';
+        const actionLabel = CoupLogic.formatActionName(actionType);
+        
+        if (actionType === 'FOREIGN_AID') {
+          state.phase = 'WAITING_FOR_BLOCK';
+          state.lastMove = {
+            type: actionType,
+            timestamp: new Date().toISOString(),
+            playerName: actor.name,
+            details: `${actor.name} is taking Foreign Aid. Waiting for blocks...`,
+            success: true
+          };
+        } else {
+          state.phase = 'WAITING_FOR_CHALLENGE';
+          const targetName = targetId ? (state.players.find((p: any) => p.id === targetId)?.name || 'someone') : '';
+          state.lastMove = {
+            type: actionType,
+            timestamp: new Date().toISOString(),
+            playerName: actor.name,
+            details: `${actor.name} is choosing to ${actionLabel}${targetName ? ' on ' + targetName : ''}. Waiting for responses...`,
+            success: true
+          };
+        }
+
         state.pendingAction = {
           actorId,
           type: actionType,
@@ -54,16 +76,6 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
           challengers: [],
           timestamp: serverTimestamp,
           blocks: null
-        };
-
-        const targetName = targetId ? state.players.find((p: any) => p.id === targetId)?.name : '';
-        const actionLabel = CoupLogic.formatActionName(actionType);
-        state.lastMove = {
-          type: actionType,
-          timestamp: new Date().toISOString(),
-          playerName: actor.name,
-          details: `${actor.name} is choosing to ${actionLabel}${targetName ? ' on ' + targetName : ''}. Waiting for responses...`,
-          success: true
         };
         state.moveLog = [state.lastMove, ...state.moveLog];
 

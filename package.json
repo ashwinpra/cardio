@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "start": "npm run build && tsx server/index.ts",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "kill-ports": "bash scripts/kill-ports.sh"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
