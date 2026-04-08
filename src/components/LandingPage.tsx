@@ -6,6 +6,8 @@ export default function LandingPage() {
   const { createLANSession, connectToLAN } = useGame();
   const [sessionCode, setSessionCode] = useState('');
   const [selectedGame, setSelectedGame] = useState<GameType>('LITERATURE');
+  const gameTitle =
+    selectedGame === 'LITERATURE' ? 'Literature' : selectedGame === 'COUP' ? 'Coup' : 'Secret Hitler';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 md:p-8 bg-[#f8f9fa]">
@@ -44,6 +46,13 @@ export default function LandingPage() {
                 <div className="font-bold text-sm text-[#191c1d]">Coup</div>
                 <div className="text-[11px] text-[#6c7a71]">Bluffing, influence & assassination</div>
               </button>
+              <button
+                onClick={() => setSelectedGame('SECRET_HITLER')}
+                className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${selectedGame === 'SECRET_HITLER' ? 'border-emerald-500 bg-emerald-50/50' : 'border-[#f3f4f5] grayscale opacity-60'}`}
+              >
+                <div className="font-bold text-sm text-[#191c1d]">Secret Hitler</div>
+                <div className="text-[11px] text-[#6c7a71]">Hidden roles, voting & policy deduction</div>
+              </button>
             </div>
           </div>
           <button
@@ -51,7 +60,7 @@ export default function LandingPage() {
             className="w-full py-4 rounded-full text-white font-bold text-sm transition-all hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
             style={{ background: 'linear-gradient(180deg, #10b981, #006c49)' }}
           >
-            Create {selectedGame === 'LITERATURE' ? 'Literature' : 'Coup'} Session
+            Create {gameTitle} Session
           </button>
         </div>
 

@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as LiteratureHandler from './games/literature.js';
 import * as CoupHandler from './games/coup.js';
+import * as SecretHitlerHandler from './games/secretHitler.js';
 import type { BaseGameState as GameState, GameType } from '../src/shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -73,6 +74,41 @@ function sanitizeStateForPlayer(state: any, playerId: string): any {
     return { ...state, players };
   }
 
+  if (state.gameType === 'SECRET_HITLER') {
+    const me = state.players.find((p: any) => p.id === playerId);
+    const visiblePlayers = state.players.map((p: any) => ({
+      ...p,
+      role: p.id === playerId ? p.role : undefined,
+      partyMembership: p.id === playerId ? p.partyMembership : undefined,
+    }));
+
+    const fascists = state.players.filter((p: any) => p.role === 'FASCIST');
+    const hitler = state.players.find((p: any) => p.role === 'HITLER');
+    if (me?.role === 'FASCIST') {
+      for (const other of fascists) {
+        const target = visiblePlayers.find((p: any) => p.id === other.id);
+        if (target) target.role = other.role;
+      }
+      if (hitler) {
+        const target = visiblePlayers.find((p: any) => p.id === hitler.id);
+        if (target) target.role = 'HITLER';
+      }
+    } else if (me?.role === 'HITLER') {
+      for (const fascist of fascists) {
+        const target = visiblePlayers.find((p: any) => p.id === fascist.id);
+        if (target) target.role = 'FASCIST';
+      }
+    }
+
+    return {
+      ...state,
+      players: visiblePlayers,
+      presidentCards: me?.id === state.presidentId ? state.presidentCards : [],
+      chancellorCards: me?.id === state.nominatedChancellorId ? state.chancellorCards : [],
+      policyPeek: me?.id === state.presidentId && state.executiveAction === 'POLICY_PEEK' ? state.policyPeek : null,
+    };
+  }
+
   return state;
 }
 
@@ -108,6 +144,32 @@ function createEmptyState(sessionId: string, gameType: GameType): any {
       ...base,
       deck: [],
       pendingAction: null,
+    };
+  }
+
+  if (gameType === 'SECRET_HITLER') {
+    return {
+      ...base,
+      drawPile: [],
+      discardPile: [],
+      electionTracker: 0,
+      liberalPolicies: 0,
+      fascistPolicies: 0,
+      presidentId: null,
+      nominatedChancellorId: null,
+      chancellorId: null,
+      previousPresidentId: null,
+      previousChancellorId: null,
+      presidentCards: [],
+      chancellorCards: [],
+      votes: {},
+      vetoRequested: false,
+      executiveAction: null,
+      policyPeek: null,
+      specialElectionReturnIndex: null,
+      winner: null,
+      winnerReason: null,
+      investigateResults: {},
     };
   }
 
@@ -184,7 +246,8 @@ wss.on('connection', (ws) => {
         case 'START_GAME':
         case 'ASK_CARD':
         case 'CLAIM_BOOK':
-        case 'COUP_ACTION': {
+        case 'COUP_ACTION':
+        case 'SECRET_HITLER_ACTION': {
           if (!session || !currentSessionId) break;
           
           let result: { state?: any; error?: string } = {};
@@ -194,6 +257,8 @@ wss.on('connection', (ws) => {
             result = LiteratureHandler.handleAction(session.state, actionData);
           } else if (session.gameType === 'COUP') {
             result = CoupHandler.handleAction(session.state, actionData, broadcastState);
+          } else if (session.gameType === 'SECRET_HITLER') {
+            result = SecretHitlerHandler.handleAction(session.state, actionData);
           }
 
           if (result.error) {

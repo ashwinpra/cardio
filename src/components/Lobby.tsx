@@ -10,6 +10,7 @@ export default function Lobby() {
   if (!gameState) return null;
 
   const isLiterature = gameState.gameType === 'LITERATURE';
+  const isSecretHitler = gameState.gameType === 'SECRET_HITLER';
   const isJoined = !!gameState.players.find(p => p.id === localId) || !!gameState.players.find(p => p.id === myPlayerId);
 
   const handleJoin = () => {
@@ -60,7 +61,10 @@ export default function Lobby() {
           <div>
             <p className="text-[10px] md:text-[11px] text-[#bbcabf] uppercase tracking-[0.1em] font-medium">Participants</p>
             <p className="text-2xl md:text-3xl font-black text-[#191c1d]">
-              {gameState.players.length}<span className="text-sm text-[#bbcabf] font-medium ml-1">/{isLiterature ? '8' : '6'}</span>
+              {gameState.players.length}
+              <span className="text-sm text-[#bbcabf] font-medium ml-1">
+                /{isLiterature ? '8' : isSecretHitler ? '10' : '6'}
+              </span>
             </p>
           </div>
         </div>
