@@ -26,7 +26,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initWs = useCallback((onOpen: (s: WebSocket) => void) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
-    const port = window.location.port === '5173' ? '3001' : window.location.port;
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+    const port = isLocalhost ? '3001' : window.location.port;
     const url = `${protocol}//${host}${port ? `:${port}` : ''}`;
     const socket = new WebSocket(url);
 
