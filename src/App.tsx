@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage';
 import Lobby from './components/Lobby';
 import LiteratureBoard from './games/literature/Board';
 import CoupBoard from './games/coup/Board';
+import SecretHitlerBoard from './games/secretHitler/Board';
 
 function App() {
   const { gameState, error } = useGame();
@@ -11,6 +12,7 @@ function App() {
     if (!gameState) return null;
     if (gameState.gameType === 'LITERATURE') return <LiteratureBoard />;
     if (gameState.gameType === 'COUP') return <CoupBoard />;
+    if (gameState.gameType === 'SECRET_HITLER') return <SecretHitlerBoard />;
     return <div className="p-8 text-center">Unknown Game Type</div>;
   };
 
