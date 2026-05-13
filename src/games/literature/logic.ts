@@ -124,114 +124,94 @@ export function handleAsk(gameState: GameState, askerId: string, targetId: strin
     success: targetHasCard
   };
   
-  const newState = { ...gameState };
-  newState.lastMove = move;
-  newState.moveLog = [move, ...gameState.moveLog];
-  
   if (targetHasCard) {
-    // Transfer card
-    newState.hands[targetId] = targetHand.filter(c => !isSameCard(c, askedCard));
-    newState.hands[askerId] = [...askerHand, askedCard];
-    // turn stays with asker
-    
-    // Auto-elimination check?
-    // If target runs out of cards, they don't do anything special as turn stays with asker.
+    // Transfer card — build new hands object immutably
+    const newHands = {
+      ...gameState.hands,
+      [targetId]: targetHand.filter(c => !isSameCard(c, askedCard)),
+      [askerId]: [...askerHand, askedCard],
+    };
+
+    return {
+      state: {
+        ...gameState,
+        lastMove: move,
+        moveLog: [move, ...gameState.moveLog],
+        hands: newHands,
+      },
+      success: true,
+    };
   } else {
     // Turn passes to target
-    newState.activePlayerIndex = gameState.players.findIndex(p => p.id === targetId);
+    return {
+      state: {
+        ...gameState,
+        lastMove: move,
+        moveLog: [move, ...gameState.moveLog],
+        activePlayerIndex: gameState.players.findIndex(p => p.id === targetId),
+      },
+      success: false,
+    };
   }
-  
-  return { state: newState, success: targetHasCard };
 }
 
-// claim includes: Record<string, Card[]> which maps player names to the cards they are claimed to hold
-export function handleClaim(gameState: GameState, claimerId: string, claimingTeam: Team, halfSuit: HalfSuitName, declarations: Record<string, Card[]>): { state: GameState, success: boolean, correctTeam: boolean, error?: string } {
+export function handleClaim(gameState: GameState, claimerId: string, halfSuit: HalfSuitName): { state: GameState, success: boolean, error?: string } {
   const claimer = gameState.players.find(p => p.id === claimerId);
-  if (!claimer) return { state: gameState, success: false, correctTeam: false, error: 'Invalid player' };
-  
-  // Map declarations from player names back to hands to verify
-  // A correct claim means EVERY card is placed correctly.
-  
-  let isCorrect = true;
-  let opponentHoldsOne = false;
-  
-  const requiredCards = getCardsInHalfSuit(halfSuit);
-  const actualHands = gameState.hands;
-  
-  for (const card of requiredCards) {
-    // Find who was declared to have it
-    let declaredOwnerName: string | null = null;
-    for (const [name, cards] of Object.entries(declarations)) {
-      if (cards.some(c => isSameCard(c, card))) {
-        declaredOwnerName = name;
-        break;
-      }
-    }
-    
-    // Find who actually has it
-    let actualOwnerId: string | null = null;
-    let actualOwnerTeam: Team | null = null;
-    for (const [id, hand] of Object.entries(actualHands)) {
-      if (hand.some(c => isSameCard(c, card))) {
-        actualOwnerId = id;
-        actualOwnerTeam = gameState.players.find(p => p.id === id)?.team || null;
-        break;
-      }
-    }
-    
-    const declaredOwner = gameState.players.find(p => p.name === declaredOwnerName);
-    
-    if (actualOwnerTeam !== claimingTeam) {
-      opponentHoldsOne = true;
-    }
-    
-    if (declaredOwner?.id !== actualOwnerId) {
-      isCorrect = false;
-    }
-  }
-  
-  // Rule outcomes:
-  // Correct -> book awarded to claimer's team
-  // Opponent holds one -> book awarded to opposing team
-  // All cards held by claimer's team, but wrong distribution -> forfeited (nobody gets points)
-  
-  let awardedTeam: Team | 'FORFEITED' = 'FORFEITED';
-  
-  if (isCorrect) {
-    awardedTeam = claimingTeam;
-  } else if (opponentHoldsOne) {
-    awardedTeam = claimingTeam === 'TEAM_A' ? 'TEAM_B' : 'TEAM_A';
-  } else {
-    awardedTeam = 'FORFEITED';
-  }
-  
+  if (!claimer) return { state: gameState, success: false, error: 'Invalid player' };
+
+  const claimingTeam = claimer.team;
+  const hsCards = getCardsInHalfSuit(halfSuit);
+  const teamPlayerIds = gameState.players
+    .filter(p => p.team === claimingTeam)
+    .map(p => p.id);
+
+  // Check if the claiming team collectively holds every card in the half-suit
+  const teamHoldsAll = hsCards.every(card =>
+    teamPlayerIds.some(pid => {
+      const hand = gameState.hands[pid] || [];
+      return hand.some(c => isSameCard(c, card));
+    })
+  );
+
+  const opponentTeam: Team = claimingTeam === 'TEAM_A' ? 'TEAM_B' : 'TEAM_A';
+  const awardedTo: Team = teamHoldsAll ? claimingTeam : opponentTeam;
+
+  const moveDetails = teamHoldsAll
+    ? `${claimer.name} correctly claimed the ${halfSuit.replace(/_/g, ' ').toLowerCase()}!`
+    : `${claimer.name} failed to claim the ${halfSuit.replace(/_/g, ' ').toLowerCase()} — the book goes to the opposing team.`;
+
   const move: Move = {
     type: 'CLAIM',
     timestamp: new Date().toISOString(),
     playerName: claimer.name,
-    details: `${claimer.name} claimed ${halfSuit} and it was ${awardedTeam === 'FORFEITED' ? 'Forfeited' : `awarded to ${awardedTeam}`}.`,
-    success: awardedTeam === claimingTeam
+    details: moveDetails,
+    success: teamHoldsAll,
   };
-  
-  const newState = { ...gameState };
-  newState.lastMove = move;
-  newState.moveLog = [move, ...gameState.moveLog];
-  
-  // Remove cards from all players
-  for (const id in newState.hands) {
-    newState.hands[id] = newState.hands[id].filter(c => getHalfSuit(c) !== halfSuit);
+
+  // Build new state immutably
+  const newHands: Record<string, Card[]> = {};
+  for (const pid in gameState.hands) {
+    newHands[pid] = gameState.hands[pid].filter(c => !hsCards.some(hc => isSameCard(hc, c)));
   }
-  
-  if (awardedTeam !== 'FORFEITED') {
-    newState.books.push({ team: awardedTeam, halfSuit });
-    if (awardedTeam === 'TEAM_A') newState.scores.teamA++;
-    else newState.scores.teamB++;
-  }
-  
-  // Turn logic: 
-  // If claimer has no cards left, turn must pass (unless we implement "pass turn on zero cards rules").
-  // According to standard literature, if they successfully claim and drop to 0, they can pass to a teammate.
-  // We'll require a follow-up action for that, for now let's just leave the active index or shift.
-  
-  return { state: newState, success: awardedTeam === claimingTeam, correctTeam: awardedTeam === claimingTeam };
+
+  const newBooks = [...gameState.books, { team: awardedTo, halfSuit }];
+  const newScores = {
+    teamA: gameState.scores.teamA + (awardedTo === 'TEAM_A' ? 1 : 0),
+    teamB: gameState.scores.teamB + (awardedTo === 'TEAM_B' ? 1 : 0),
+  };
+
+  const maxBooks = gameState.players.length === 8 ? 8 : 9;
+
+  return {
+    state: {
+      ...gameState,
+      phase: newBooks.length >= maxBooks ? 'GAME_OVER' : gameState.phase,
+      lastMove: move,
+      moveLog: [move, ...gameState.moveLog],
+      hands: newHands,
+      books: newBooks,
+      scores: newScores,
+    },
+    success: teamHoldsAll,
+  };
 }

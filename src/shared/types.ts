@@ -24,8 +24,4 @@ export interface BaseGameState {
   activePlayerIndex: number;
   lastMove: Move | null;
   moveLog: Move[];
-  pendingAction?: any;
-  loserId?: string;
-  resolution?: string;
-  winner?: string;
 }

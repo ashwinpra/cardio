@@ -22,6 +22,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const pendingLobbyJoinRef = useRef<{ id: string; name: string } | null>(null);
 
   const initWs = useCallback((onOpen: (s: WebSocket) => void) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -62,6 +63,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               lastMove: null,
               moveLog: [],
             } as GameState);
+            // If we have a pending lobby join from auto-reconnect, send it now
+            if (pendingLobbyJoinRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+              const { id, name } = pendingLobbyJoinRef.current;
+              pendingLobbyJoinRef.current = null;
+              wsRef.current.send(JSON.stringify({
+                type: 'JOIN_LOBBY',
+                player: { id, name }
+              }));
+            }
             break;
           case 'STATE_UPDATE':
             setGameState(data.state);
@@ -132,17 +142,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedPlayerName = localStorage.getItem('cardio_playerName');
 
     if (savedSessionId && !gameState) {
+      // Store pending lobby join info; it will be consumed when SESSION_JOINED arrives
+      if (savedPlayerId && savedPlayerName) {
+        pendingLobbyJoinRef.current = { id: savedPlayerId, name: savedPlayerName };
+      }
       initWs((s) => {
         s.send(JSON.stringify({ type: 'JOIN_SESSION', sessionId: savedSessionId }));
-        // If we have player info, auto-rejoin the lobby too
-        if (savedPlayerId && savedPlayerName) {
-          setTimeout(() => {
-            s.send(JSON.stringify({ 
-              type: 'JOIN_LOBBY', 
-              player: { id: savedPlayerId, name: savedPlayerName } 
-            }));
-          }, 500); // Give it a moment to join session first
-        }
       });
     }
   }, []);
@@ -165,3 +170,4 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useGame = () => useContext(GameContext);
+
