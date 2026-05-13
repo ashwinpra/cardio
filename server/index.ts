@@ -21,13 +21,35 @@ const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3001;
 
+// ─── Constants ───────────────────────────────────────────
+const HEARTBEAT_INTERVAL_MS = 15_000;
+const HEARTBEAT_TIMEOUT_MS = 10_000;
+const SESSION_CLEANUP_DELAY_MS = 120_000; // 2 minutes after last client leaves
+
+const MAX_PLAYERS: Record<string, number> = {
+  LITERATURE: 8,
+  COUP: 6,
+  SECRET_HITLER: 10,
+  HANABI: 5,
+  LOVE_LETTER: 4,
+  SPADES: 4,
+};
+
+// ─── Types ───────────────────────────────────────────────
 interface Session {
   clients: Map<WebSocket, string>; // ws -> playerId
   state: GameState;
   gameType: GameType;
+  hostPlayerId: string | null; // first player to join is host
+  cleanupTimer: ReturnType<typeof setTimeout> | null;
 }
 
+// Track which WS is alive for heartbeat
+const wsAliveMap = new WeakMap<WebSocket, boolean>();
+
 const sessions: Record<string, Session> = {};
+
+// ─── Helpers ─────────────────────────────────────────────
 
 function generateSessionId(): string {
   let id: string;
@@ -51,6 +73,37 @@ function broadcastState(sessionId: string) {
         gameType: session.gameType 
       }));
     }
+  }
+}
+
+/** Mark a player as connected/disconnected in game state */
+function setPlayerConnected(session: Session, playerId: string, connected: boolean) {
+  const player = session.state.players.find((p: any) => p.id === playerId);
+  if (player) {
+    (player as any).isConnected = connected;
+  }
+}
+
+/** Check if any WS in the session is bound to this playerId and is still OPEN */
+function isPlayerConnectedViaAnotherSocket(session: Session, playerId: string, excludeWs: WebSocket): boolean {
+  for (const [ws, pid] of session.clients.entries()) {
+    if (pid === playerId && ws !== excludeWs && ws.readyState === WebSocket.OPEN) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Clean up dead/stale WebSocket entries from session clients */
+function pruneDeadClients(session: Session) {
+  const toDelete: WebSocket[] = [];
+  for (const [ws] of session.clients.entries()) {
+    if (ws.readyState !== WebSocket.OPEN && ws.readyState !== WebSocket.CONNECTING) {
+      toDelete.push(ws);
+    }
+  }
+  for (const ws of toDelete) {
+    session.clients.delete(ws);
   }
 }
 
@@ -215,10 +268,32 @@ function createEmptyState(sessionId: string, gameType: GameType): any {
   return base;
 }
 
+// ─── Heartbeat ───────────────────────────────────────────
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (wsAliveMap.get(ws) === false) {
+      // Missed the last pong — terminate
+      console.log('Terminating unresponsive WebSocket');
+      ws.terminate();
+      return;
+    }
+    wsAliveMap.set(ws, false);
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL_MS);
+
+wss.on('close', () => clearInterval(heartbeatInterval));
+
+// ─── Connection Handler ──────────────────────────────────
 wss.on('connection', (ws) => {
   console.log('Client connected');
+  wsAliveMap.set(ws, true);
   let currentSessionId: string | null = null;
   let myPlayerId: string | null = null;
+
+  ws.on('pong', () => {
+    wsAliveMap.set(ws, true);
+  });
 
   ws.on('message', (raw) => {
     try {
@@ -235,6 +310,8 @@ wss.on('connection', (ws) => {
             clients: new Map([[ws, '']]),
             state: createEmptyState(sessionId, gameType),
             gameType,
+            hostPlayerId: null,
+            cleanupTimer: null,
           };
           currentSessionId = sessionId;
           ws.send(JSON.stringify({ type: 'SESSION_CREATED', sessionId, gameType }));
@@ -247,42 +324,127 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Session not found' }));
             break;
           }
-          sessions[sid].clients.set(ws, '');
+
+          // Cancel any pending cleanup if someone is reconnecting
+          const targetSession = sessions[sid];
+          if (targetSession.cleanupTimer) {
+            clearTimeout(targetSession.cleanupTimer);
+            targetSession.cleanupTimer = null;
+          }
+
+          targetSession.clients.set(ws, '');
           currentSessionId = sid;
           ws.send(JSON.stringify({ 
             type: 'SESSION_JOINED', 
             sessionId: sid, 
-            gameType: sessions[sid].gameType 
+            gameType: targetSession.gameType 
           }));
           broadcastState(sid);
           break;
         }
 
         case 'JOIN_LOBBY': {
-          if (!session) break;
+          if (!session || !currentSessionId) break;
           const player = data.player;
+
+          // ── Validate player name ──
+          const trimmedName = (player.name || '').trim();
+          if (!trimmedName || trimmedName.length < 1 || trimmedName.length > 20) {
+            ws.send(JSON.stringify({ type: 'ERROR', message: 'Name must be 1–20 characters.' }));
+            break;
+          }
+
           const existingPlayer = session.state.players.find((p: any) => p.id === player.id);
           
           if (existingPlayer) {
-            // Player is rejoining or already exists
+            // ── Reconnecting player ──
+            // Close any old sockets bound to this player
+            for (const [oldWs, oldPid] of session.clients.entries()) {
+              if (oldPid === player.id && oldWs !== ws) {
+                session.clients.delete(oldWs);
+                try { oldWs.close(4001, 'Replaced by new connection'); } catch {}
+              }
+            }
             session.clients.set(ws, player.id);
             myPlayerId = player.id;
-            console.log(`Player ${player.name} (${player.id}) re-associated with session ${currentSessionId}`);
+            setPlayerConnected(session, player.id, true);
+            console.log(`Player ${existingPlayer.name} (${player.id}) reconnected to session ${currentSessionId}`);
           } else {
-            // New player joining - only allow if game hasn't started
+            // ── New player joining ──
             if (session.state.phase !== 'LOBBY') {
               ws.send(JSON.stringify({ type: 'ERROR', message: 'Game already in progress' }));
               break;
             }
-            session.state.players.push(player);
+
+            // Enforce max players
+            const maxPlayers = MAX_PLAYERS[session.gameType] || 10;
+            if (session.state.players.length >= maxPlayers) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: `Lobby is full (${maxPlayers} players max).` }));
+              break;
+            }
+
+            // Reject duplicate names (case-insensitive)
+            const nameLower = trimmedName.toLowerCase();
+            if (session.state.players.some((p: any) => p.name.toLowerCase() === nameLower)) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: 'That name is already taken.' }));
+              break;
+            }
+
+            // Check if someone with this exact player.id already exists (shouldn't happen, but guard)
+            if (session.state.players.some((p: any) => p.id === player.id)) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: 'Player ID collision. Please refresh and try again.' }));
+              break;
+            }
+
+            session.state.players.push({ ...player, name: trimmedName, isConnected: true });
             session.clients.set(ws, player.id);
             myPlayerId = player.id;
+
+            // First player to join becomes host
+            if (!session.hostPlayerId) {
+              session.hostPlayerId = player.id;
+            }
           }
           broadcastState(currentSessionId!);
           break;
         }
 
-        case 'START_GAME':
+        case 'START_GAME': {
+          if (!session || !currentSessionId) break;
+
+          // Only the host can start the game
+          if (session.hostPlayerId && myPlayerId !== session.hostPlayerId) {
+            ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can start the game.' }));
+            break;
+          }
+
+          // Delegate to the appropriate game handler
+          let result: { state?: any; error?: string } = {};
+          const actionData = { ...data, actorId: myPlayerId };
+
+          if (session.gameType === 'LITERATURE') {
+            result = LiteratureHandler.handleAction(session.state, actionData);
+          } else if (session.gameType === 'COUP') {
+            result = CoupHandler.handleAction(session.state, actionData, broadcastState);
+          } else if (session.gameType === 'SECRET_HITLER') {
+            result = SecretHitlerHandler.handleAction(session.state, actionData);
+          } else if (session.gameType === 'HANABI') {
+            result = HanabiHandler.handleAction(session.state, actionData, broadcastState);
+          } else if (session.gameType === 'LOVE_LETTER') {
+            result = LoveLetterHandler.handleAction(session.state, actionData, broadcastState);
+          } else if (session.gameType === 'SPADES') {
+            result = SpadesHandler.handleAction(session.state, actionData, broadcastState);
+          }
+
+          if (result.error) {
+            ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
+          } else if (result.state) {
+            session.state = result.state;
+            broadcastState(currentSessionId);
+          }
+          break;
+        }
+
         case 'ASK_CARD':
         case 'CLAIM_BOOK':
         case 'COUP_ACTION':
@@ -323,14 +485,28 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (currentSessionId && sessions[currentSessionId]) {
-      sessions[currentSessionId].clients.delete(ws);
-      if (sessions[currentSessionId].clients.size === 0) {
+      const session = sessions[currentSessionId];
+      const disconnectedPlayerId = session.clients.get(ws) || null;
+      session.clients.delete(ws);
+
+      // Mark player as disconnected (if not connected via another socket)
+      if (disconnectedPlayerId && !isPlayerConnectedViaAnotherSocket(session, disconnectedPlayerId, ws)) {
+        setPlayerConnected(session, disconnectedPlayerId, false);
+        broadcastState(currentSessionId);
+      }
+
+      // Prune any other dead clients
+      pruneDeadClients(session);
+
+      // Schedule cleanup if no one is left
+      if (session.clients.size === 0) {
         const sid = currentSessionId;
-        setTimeout(() => {
+        session.cleanupTimer = setTimeout(() => {
           if (sessions[sid] && sessions[sid].clients.size === 0) {
+            console.log(`Cleaning up abandoned session ${sid}`);
             delete sessions[sid];
           }
-        }, 60000);
+        }, SESSION_CLEANUP_DELAY_MS);
       }
     }
   });

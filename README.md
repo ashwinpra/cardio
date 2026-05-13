@@ -1,73 +1,51 @@
-# React + TypeScript + Vite
+# Cardio 🂡
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A beautiful, modern, web-based multiplayer card game suite designed with elegant UI and real-time synchronization.
 
-Currently, two official plugins are available:
+![Cardio Banner](./public/favicon.svg)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🎲 Games Included
 
-## React Compiler
+Cardio currently supports a variety of classic and modern deduction card games:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Literature**: A classic team-based deduction and memory game where players collect sets of cards.
+- **Coup**: A dystopian universe game of bluffing, deception, and calling bluffs.
+- **Hanabi**: A cooperative game of logic and fireworks where you can see everyone's cards but your own.
+- **Secret Hitler**: A dramatic game of political intrigue and betrayal set in 1930s Germany.
+- **Love Letter**: A fast-paced game of risk, deduction, and luck to deliver your letter to the Princess.
+- **Spades**: A classic trick-taking partnership game where spades are always trump.
 
-## Expanding the ESLint configuration
+## 🚀 Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Cardio is built for speed, responsiveness, and aesthetic excellence:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Vite
+- **UI Design**: Material Design 3-inspired, custom CSS, elegant typography
+- **Backend**: Node.js + WebSockets (custom game loop handling)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🛠 Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+To run Cardio locally, ensure you have Node.js installed.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+2. **Start the Development Server**
+   This single command concurrently starts the Vite frontend and the Node.js websocket server.
+   ```bash
+   npm run dev
+   ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+3. **Play**
+   Navigate to `http://localhost:5173` in your browser. 
+   *(Note: You can use the "Debug UI" option in the game lobby to test game boards by yourself without needing multiple players to join!)*
+
+## 🎨 Design
+
+The styling is handled via a unified set of Tailwind CSS variables (`src/index.css`) that enforce a sleek, dark-mode-first aesthetic with dynamic theming. 
+
+## 📝 License
+
+MIT

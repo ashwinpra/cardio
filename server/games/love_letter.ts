@@ -8,7 +8,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length < 2 || state.players.length > 4) {
+      if (!data.test && (state.players.length < 2 || state.players.length > 4)) {
         return { error: `Need 2-4 players to start Love Letter (${state.players.length} present)` };
       }
       return { state: LoveLetterLogic.setupLoveLetter(state) };

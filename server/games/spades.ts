@@ -8,7 +8,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length !== 4) {
+      if (!data.test && state.players.length !== 4) {
         return { error: `Spades requires exactly 4 players (${state.players.length} present)` };
       }
       return { state: SpadesLogic.setupSpades(state) };

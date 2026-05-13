@@ -1,11 +1,19 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import type { BaseGameState as GameState, GameType } from '../shared/types';
 
+// ─── Constants ───────────────────────────────────────────
+const MAX_RECONNECT_ATTEMPTS = 8;
+const RECONNECT_BASE_DELAY_MS = 1_000;
+const RECONNECT_MAX_DELAY_MS = 15_000;
+
+type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
+
 interface GameContextProps {
   gameState: GameState | null;
   myPlayerId: string | null;
   cardCounts: Record<string, number>;
   error: string | null;
+  connectionStatus: ConnectionStatus;
   createLANSession: (gameType: GameType) => void;
   connectToLAN: (sessionId: string) => void;
   sendMessage: (msg: any) => void;
@@ -23,9 +31,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
   const [cardCounts, setCardCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+
   const wsRef = useRef<WebSocket | null>(null);
   const isAutoReconnectAttemptRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intentionalCloseRef = useRef(false);
+  const pendingMessagesRef = useRef<any[]>([]);
+
+  // ─── localStorage helpers ────────────────────────────────
 
   const clearPersistedSession = useCallback(() => {
     localStorage.removeItem('cardio_sessionId');
@@ -33,7 +48,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('cardio_playerName');
   }, []);
 
+  const getPersistedSession = useCallback(() => ({
+    sessionId: localStorage.getItem('cardio_sessionId'),
+    playerId: localStorage.getItem('cardio_playerId'),
+    playerName: localStorage.getItem('cardio_playerName'),
+  }), []);
+
+  // ─── WebSocket init ──────────────────────────────────────
+
   const initWs = useCallback((onOpen: (s: WebSocket) => void) => {
+    // Close any existing connection cleanly
+    if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) {
+      intentionalCloseRef.current = true;
+      wsRef.current.close();
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
     const isLocalhost = host === 'localhost' || host === '127.0.0.1';
@@ -42,7 +71,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const socket = new WebSocket(url);
 
     socket.onopen = () => {
-      setIsConnected(true);
+      setConnectionStatus('connected');
+      reconnectAttemptsRef.current = 0;
+      intentionalCloseRef.current = false;
+
+      // Flush any queued messages
+      while (pendingMessagesRef.current.length > 0) {
+        const msg = pendingMessagesRef.current.shift();
+        socket.send(JSON.stringify(msg));
+      }
+
       onOpen(socket);
     };
 
@@ -52,7 +90,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         switch (data.type) {
           case 'SESSION_CREATED':
             isAutoReconnectAttemptRef.current = false;
-            // We get sessionId back, create a minimal state for the lobby
             setGameState({
               sessionId: data.sessionId,
               gameType: data.gameType,
@@ -98,27 +135,76 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    socket.onclose = () => {
-      setIsConnected(false);
+    socket.onclose = (event) => {
+      setConnectionStatus('disconnected');
       wsRef.current = null;
+
+      // Don't reconnect if this was intentional (user clearing session)
+      if (intentionalCloseRef.current) {
+        intentionalCloseRef.current = false;
+        return;
+      }
+
+      // Attempt auto-reconnect if we have a session to return to
+      const persisted = getPersistedSession();
+      if (persisted.sessionId && persisted.playerId && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(
+          RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttemptsRef.current),
+          RECONNECT_MAX_DELAY_MS
+        );
+        reconnectAttemptsRef.current++;
+        setConnectionStatus('reconnecting');
+        console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
+
+        reconnectTimerRef.current = setTimeout(() => {
+          const { sessionId, playerId, playerName } = getPersistedSession();
+          if (!sessionId || !playerId) return;
+
+          isAutoReconnectAttemptRef.current = true;
+          initWs((s) => {
+            // Re-join session
+            s.send(JSON.stringify({ type: 'JOIN_SESSION', sessionId }));
+            // Re-join lobby with persisted identity
+            if (playerName) {
+              // Use a brief delay to let JOIN_SESSION process first
+              setTimeout(() => {
+                if (s.readyState === WebSocket.OPEN) {
+                  s.send(JSON.stringify({
+                    type: 'JOIN_LOBBY',
+                    player: { id: playerId, name: playerName }
+                  }));
+                }
+              }, 300);
+            }
+          });
+        }, delay);
+      }
     };
 
     wsRef.current = socket;
-  }, []);
+  }, [clearPersistedSession, getPersistedSession]);
+
+  // ─── Public API ──────────────────────────────────────────
 
   const createLANSession = useCallback((gameType: GameType) => {
     isAutoReconnectAttemptRef.current = false;
+    reconnectAttemptsRef.current = 0;
     initWs((s: WebSocket) => s.send(JSON.stringify({ type: 'CREATE_SESSION', gameType })));
   }, [initWs]);
 
   const connectToLAN = useCallback((sessionId: string) => {
     isAutoReconnectAttemptRef.current = false;
+    reconnectAttemptsRef.current = 0;
     initWs((s) => s.send(JSON.stringify({ type: 'JOIN_SESSION', sessionId })));
   }, [initWs]);
 
   const sendMessage = useCallback((msg: any) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg));
+    } else {
+      // Queue the message for when we reconnect (non-critical actions)
+      console.warn('WebSocket not ready, queuing message:', msg.type);
+      pendingMessagesRef.current.push(msg);
     }
   }, []);
 
@@ -132,15 +218,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [myPlayerId, sendMessage]);
 
   const clearSession = useCallback(() => {
+    // Cancel any pending reconnect
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    reconnectAttemptsRef.current = MAX_RECONNECT_ATTEMPTS; // prevent reconnect
+
     clearPersistedSession();
     setGameState(null);
     setMyPlayerId(null);
+    setConnectionStatus('disconnected');
+    pendingMessagesRef.current = [];
+
     if (wsRef.current) {
+      intentionalCloseRef.current = true;
       wsRef.current.close();
     }
   }, [clearPersistedSession]);
 
-  // Persistence: Save to localStorage
+  // ─── Persistence: Save to localStorage ───────────────────
+
   useEffect(() => {
     if (gameState?.sessionId) {
       localStorage.setItem('cardio_sessionId', gameState.sessionId);
@@ -154,7 +252,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [gameState?.sessionId, gameState?.players, myPlayerId]);
 
-  // Persistence: Auto-reconnect on mount
+  // ─── Persistence: Auto-reconnect on mount ────────────────
+
   useEffect(() => {
     const savedSessionId = localStorage.getItem('cardio_sessionId');
     const savedPlayerId = localStorage.getItem('cardio_playerId');
@@ -164,17 +263,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAutoReconnectAttemptRef.current = true;
       initWs((s) => {
         s.send(JSON.stringify({ type: 'JOIN_SESSION', sessionId: savedSessionId }));
-        // If we have player info, auto-rejoin the lobby too
         if (savedPlayerId && savedPlayerName) {
           setTimeout(() => {
-            s.send(JSON.stringify({ 
-              type: 'JOIN_LOBBY', 
-              player: { id: savedPlayerId, name: savedPlayerName } 
-            }));
-          }, 500); // Give it a moment to join session first
+            if (s.readyState === WebSocket.OPEN) {
+              s.send(JSON.stringify({ 
+                type: 'JOIN_LOBBY', 
+                player: { id: savedPlayerId, name: savedPlayerName } 
+              }));
+            }
+          }, 300);
         }
       });
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+    };
   }, []);
 
   return (
@@ -185,11 +292,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       playerId: myPlayerId,
       cardCounts, 
       error, 
+      connectionStatus,
       createLANSession, 
       connectToLAN, 
       sendMessage, 
       sendAction,
-      isConnected,
+      isConnected: connectionStatus === 'connected',
       clearSession
     }}>
       {children}

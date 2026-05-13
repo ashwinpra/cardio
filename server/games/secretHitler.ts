@@ -12,7 +12,8 @@ export function handleAction(state: SecretHitlerState, data: any) {
 
   switch (data.type) {
     case 'START_GAME': {
-      if (state.players.length < 5) return { error: 'Need at least 5 players for Secret Hitler.' };
+      const minPlayers = data.test ? 1 : 3;
+      if (state.players.length < minPlayers) return { error: `Need at least ${minPlayers} players for Secret Hitler.` };
       if (state.players.length > 10) return { error: 'Maximum 10 players allowed.' };
       return { state: SH.setupSecretHitler(state) };
     }

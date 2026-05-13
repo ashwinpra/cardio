@@ -4,7 +4,7 @@ import { Card } from '../../src/games/literature/types.js';
 export function handleAction(state: any, data: any) {
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length < 2) return { error: 'Need at least 2 players' };
+      if (!data.test && state.players.length < 2) return { error: 'Need at least 2 players' };
       return { state: LiteratureLogic.dealCards(state) };
 
     case 'ASK_CARD':

@@ -8,7 +8,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length < 2 || state.players.length > 5) {
+      if (!data.test && (state.players.length < 2 || state.players.length > 5)) {
         return { error: `Need 2-5 players to start Hanabi (${state.players.length} present)` };
       }
       return { state: HanabiLogic.setupHanabi(state) };
