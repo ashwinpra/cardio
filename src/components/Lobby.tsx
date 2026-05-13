@@ -17,9 +17,6 @@ export default function Lobby() {
 
   const isLiterature = gameState.gameType === 'LITERATURE';
   const isSpades = gameState.gameType === 'SPADES';
-  const isHanabi = gameState.gameType === 'HANABI';
-  const isLoveLetter = gameState.gameType === 'LOVE_LETTER';
-  const isSecretHitler = gameState.gameType === 'SECRET_HITLER';
   const isJoined = !!gameState.players.find(p => p.id === localId) || !!gameState.players.find(p => p.id === myPlayerId);
 
   // Determine host: first player in the list

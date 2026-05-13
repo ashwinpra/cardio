@@ -71,8 +71,8 @@ function PlayingCard({ card, selected, onClick, size = 'normal' }: {
 
 // ─── Player Seat ─────────────────────────────────────────
 
-function PlayerSeat({ player, isActive, cardCount, size = 'normal' }: {
-  player: Player; isActive: boolean; cardCount: number; size?: 'normal' | 'compact'
+function PlayerSeat({ player, isActive, cardCount }: {
+  player: Player; isActive: boolean; cardCount: number;
 }) {
   return (
     <div className={`bg-surface-container-lowest px-4 py-2 rounded-full shadow-md border ${isActive ? 'border-primary ring-2 ring-primary/20 bg-primary-fixed/10' : 'border-surface-variant'} flex items-center gap-3 transition-transform ${isActive ? 'scale-105' : ''}`}>

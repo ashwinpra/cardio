@@ -3,12 +3,6 @@ import { GameContext } from '../../context/GameContext';
 import RulesButton from '../../components/RulesButton';
 import type { GameState, Card, Player } from './types';
 
-const suitSymbols: Record<string, string> = {
-  SPADE: '♠',
-  HEART: '♥',
-  DIAMOND: '♦',
-  CLUB: '♣',
-};
 
 const suitIconNames: Record<string, string> = {
   SPADE: 'playing_cards',
@@ -101,8 +95,8 @@ export default function SpadesBoard() {
         
         <header className="flex justify-between items-center pb-4 border-b border-outline-variant mb-6">
           <div>
-            <h1 className="font-headline-sm text-headline-sm text-on-surface">Spades <span className="text-outline-variant text-sm ml-2">#{gameState.sessionId}</span></h1>
-            <span className="font-label-md text-[10px] text-primary uppercase tracking-widest">{gameState.phase}</span>
+            <h1 className="font-headline-sm text-headline-sm text-on-surface">Spades <span className="text-outline-variant text-sm ml-2">#{state.sessionId}</span></h1>
+            <span className="font-label-md text-[10px] text-primary uppercase tracking-widest">{state.phase}</span>
           </div>
           <div className="flex items-center gap-3">
             <RulesButton />

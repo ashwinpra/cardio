@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import RulesButton from '../../components/RulesButton';
-import type { Party, Policy, SecretHitlerState } from './types';
+import type { Policy, SecretHitlerState } from './types';
 
 export default function SecretHitlerBoard() {
   const { gameState: baseState, myPlayerId, sendMessage, clearSession } = useGame();
@@ -236,7 +236,7 @@ export default function SecretHitlerBoard() {
                 <>
                   <h2 className="font-headline-md text-headline-md text-on-surface">Executive Action</h2>
                   <p className="font-body-lg text-body-lg text-on-surface-variant mt-1 uppercase">
-                    {gameState.executiveAction.replaceAll('_', ' ')}
+                    {gameState.executiveAction?.replaceAll('_', ' ')}
                   </p>
                   <div className="flex flex-wrap gap-3 mt-6">
                     {actionPlayers.map((p) => (
@@ -253,7 +253,7 @@ export default function SecretHitlerBoard() {
               ) : gameState.phase === 'GAME_OVER' ? (
                 <>
                   <h2 className="font-headline-lg text-headline-lg text-on-surface">Game Over</h2>
-                  <p className={`font-headline-sm mt-2 ${gameState.winner === 'LIBERALS' ? 'text-secondary' : 'text-error'}`}>
+                  <p className={`font-headline-sm mt-2 ${gameState.winner === 'LIBERAL' ? 'text-secondary' : 'text-error'}`}>
                     Winner: {gameState.winner}
                   </p>
                   <p className="font-body-md text-on-surface-variant mt-4 p-4 bg-surface-container-low rounded-lg">

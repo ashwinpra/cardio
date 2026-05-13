@@ -135,7 +135,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    socket.onclose = (event) => {
+    socket.onclose = () => {
       setConnectionStatus('disconnected');
       wsRef.current = null;
 
