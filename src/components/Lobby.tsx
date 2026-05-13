@@ -10,12 +10,16 @@ export default function Lobby() {
   if (!gameState) return null;
 
   const isLiterature = gameState.gameType === 'LITERATURE';
+  const isSpades = gameState.gameType === 'SPADES';
+  const isHanabi = gameState.gameType === 'HANABI';
+  const isLoveLetter = gameState.gameType === 'LOVE_LETTER';
   const isSecretHitler = gameState.gameType === 'SECRET_HITLER';
   const isJoined = !!gameState.players.find(p => p.id === localId) || !!gameState.players.find(p => p.id === myPlayerId);
 
   const handleJoin = () => {
     if (!playerName.trim()) return;
     if (isLiterature && !selectedTeam) return;
+    if (isSpades && !selectedTeam) return;
 
     sendMessage({
       type: 'JOIN_LOBBY',
@@ -63,7 +67,7 @@ export default function Lobby() {
             <p className="text-2xl md:text-3xl font-black text-[#191c1d]">
               {gameState.players.length}
               <span className="text-sm text-[#bbcabf] font-medium ml-1">
-                /{isLiterature ? '8' : isSecretHitler ? '10' : '6'}
+                /{isLiterature ? '8' : isSecretHitler ? '10' : isSpades ? '4' : isHanabi ? '5' : isLoveLetter ? '4' : '6'}
               </span>
             </p>
           </div>
@@ -71,9 +75,9 @@ export default function Lobby() {
       </div>
 
       <div className="flex-1 max-w-5xl mx-auto w-full">
-        <div className={`grid ${isLiterature ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+        <div className={`grid ${isLiterature || isSpades ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
           
-          {isLiterature && (
+          {(isLiterature || isSpades) && (
             <div className="rounded-3xl p-6 bg-white shadow-[0_2px_32px_rgba(25,28,29,0.04)] border border-[#edeeef]">
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -107,7 +111,7 @@ export default function Lobby() {
                       placeholder="e.g. Ace" />
                   </div>
                   
-                  {isLiterature && (
+                  {(isLiterature || isSpades) && (
                     <div>
                       <label className="block text-[10px] font-bold text-[#6c7a71] uppercase tracking-[0.15em] mb-2 underline decoration-emerald-300 underline-offset-4">Choose Side</label>
                       <div className="grid grid-cols-2 gap-3">
@@ -124,7 +128,7 @@ export default function Lobby() {
                   )}
                 </div>
                 
-                <button onClick={handleJoin} disabled={!playerName.trim() || (isLiterature && !selectedTeam)}
+                <button onClick={handleJoin} disabled={!playerName.trim() || ((isLiterature || isSpades) && !selectedTeam)}
                   className="w-full py-4 rounded-full text-white font-bold text-sm mt-8 transition-all hover:translate-y-[-2px] active:translate-y-[0px] disabled:opacity-30 disabled:grayscale"
                   style={{ background: 'linear-gradient(180deg, #10b981, #006c49)' }}>
                   Enter Arena
@@ -147,7 +151,7 @@ export default function Lobby() {
             )}
           </div>
 
-          {!isLiterature && (
+          {!(isLiterature || isSpades) && (
             <div className="rounded-3xl p-6 bg-white shadow-[0_2px_32px_rgba(25,28,29,0.04)] border border-[#edeeef]">
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
@@ -162,7 +166,7 @@ export default function Lobby() {
             </div>
           )}
 
-          {isLiterature && (
+          {(isLiterature || isSpades) && (
             <div className="rounded-3xl p-6 bg-white shadow-[0_2px_32px_rgba(25,28,29,0.04)] border border-[#edeeef]">
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />

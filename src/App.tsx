@@ -4,6 +4,9 @@ import Lobby from './components/Lobby';
 import LiteratureBoard from './games/literature/Board';
 import CoupBoard from './games/coup/Board';
 import SecretHitlerBoard from './games/secretHitler/Board';
+import HanabiBoard from './games/hanabi/Board';
+import LoveLetterBoard from './games/love_letter/Board';
+import SpadesBoard from './games/spades/Board';
 
 function App() {
   const { gameState, error } = useGame();
@@ -13,6 +16,9 @@ function App() {
     if (gameState.gameType === 'LITERATURE') return <LiteratureBoard />;
     if (gameState.gameType === 'COUP') return <CoupBoard />;
     if (gameState.gameType === 'SECRET_HITLER') return <SecretHitlerBoard />;
+    if (gameState.gameType === 'HANABI') return <HanabiBoard />;
+    if (gameState.gameType === 'LOVE_LETTER') return <LoveLetterBoard />;
+    if (gameState.gameType === 'SPADES') return <SpadesBoard />;
     return <div className="p-8 text-center">Unknown Game Type</div>;
   };
 

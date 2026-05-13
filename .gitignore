@@ -5,3 +5,5 @@ dist/
 .gemini/
 *.log
 notes.md
+# Added by code-review-graph
+.code-review-graph/

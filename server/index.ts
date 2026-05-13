@@ -7,6 +7,9 @@ import { fileURLToPath } from 'url';
 import * as LiteratureHandler from './games/literature.js';
 import * as CoupHandler from './games/coup.js';
 import * as SecretHitlerHandler from './games/secretHitler.js';
+import * as HanabiHandler from './games/hanabi.js';
+import * as LoveLetterHandler from './games/love_letter.js';
+import * as SpadesHandler from './games/spades.js';
 import type { BaseGameState as GameState, GameType } from '../src/shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -173,6 +176,42 @@ function createEmptyState(sessionId: string, gameType: GameType): any {
     };
   }
 
+  if (gameType === 'HANABI') {
+    return {
+      ...base,
+      deck: [],
+      playArea: { RED: 0, BLUE: 0, GREEN: 0, YELLOW: 0, WHITE: 0 },
+      discardPile: [],
+      hintTokens: 8,
+      mistakeTokens: 0,
+      score: 0,
+    };
+  }
+
+  if (gameType === 'LOVE_LETTER') {
+    return {
+      ...base,
+      deck: [],
+      discardPile: [],
+      eliminatedThisRound: [],
+      currentRound: 1,
+      handmaidProtection: null,
+    };
+  }
+
+  if (gameType === 'SPADES') {
+    return {
+      ...base,
+      deck: [],
+      currentTrick: { leadSuit: 'SPADE', cards: [] },
+      trickHistory: [],
+      teamAScore: { tricks: 0, bags: 0, score: 0 },
+      teamBScore: { tricks: 0, bags: 0, score: 0 },
+      allPlayersBid: false,
+      spadesBroken: false,
+    };
+  }
+
   return base;
 }
 
@@ -247,7 +286,8 @@ wss.on('connection', (ws) => {
         case 'ASK_CARD':
         case 'CLAIM_BOOK':
         case 'COUP_ACTION':
-        case 'SECRET_HITLER_ACTION': {
+        case 'SECRET_HITLER_ACTION':
+        case 'GAME_ACTION': {
           if (!session || !currentSessionId) break;
           
           let result: { state?: any; error?: string } = {};
@@ -259,6 +299,12 @@ wss.on('connection', (ws) => {
             result = CoupHandler.handleAction(session.state, actionData, broadcastState);
           } else if (session.gameType === 'SECRET_HITLER') {
             result = SecretHitlerHandler.handleAction(session.state, actionData);
+          } else if (session.gameType === 'HANABI') {
+            result = HanabiHandler.handleAction(session.state, actionData, broadcastState);
+          } else if (session.gameType === 'LOVE_LETTER') {
+            result = LoveLetterHandler.handleAction(session.state, actionData, broadcastState);
+          } else if (session.gameType === 'SPADES') {
+            result = SpadesHandler.handleAction(session.state, actionData, broadcastState);
           }
 
           if (result.error) {
