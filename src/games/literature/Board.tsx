@@ -315,7 +315,7 @@ export default function LiteratureBoard() {
         <div className="md:hidden flex overflow-x-auto px-4 py-4 gap-3 no-scrollbar absolute top-0 left-0 w-full z-10 bg-surface/50 backdrop-blur-sm border-b border-outline-variant">
           {otherPlayers.map((p: any) => (
             <div key={p.id} className="flex-shrink-0">
-              <PlayerSeat player={p} isActive={activePlayer?.id === p.id} cardCount={cardCounts[p.id] || 0} size="compact" />
+              <PlayerSeat player={p} isActive={activePlayer?.id === p.id} cardCount={cardCounts[p.id] || 0} />
             </div>
           ))}
         </div>
