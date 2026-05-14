@@ -1,4 +1,4 @@
-export type GameType = 'LITERATURE' | 'COUP' | 'SECRET_HITLER';
+export type GameType = 'LITERATURE' | 'COUP' | 'SECRET_HITLER' | 'HANABI' | 'LOVE_LETTER' | 'SPADES';
 
 export interface Player {
   id: string;

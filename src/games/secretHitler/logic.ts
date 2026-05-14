@@ -8,6 +8,10 @@ import type {
 } from './types';
 
 const ROLE_SETUP: Record<number, { liberals: number; fascists: number }> = {
+  1: { liberals: 0, fascists: 0 },
+  2: { liberals: 1, fascists: 0 },
+  3: { liberals: 1, fascists: 1 },
+  4: { liberals: 2, fascists: 1 },
   5: { liberals: 3, fascists: 1 },
   6: { liberals: 4, fascists: 1 },
   7: { liberals: 4, fascists: 2 },
@@ -129,7 +133,7 @@ export function setupSecretHitler(state: SecretHitlerState): SecretHitlerState {
 export function canNominateChancellor(state: SecretHitlerState, presidentId: string, targetId: string): string | null {
   if (state.phase !== 'NOMINATE_CHANCELLOR') return 'Not nomination phase.';
   if (state.presidentId !== presidentId) return 'Only the current president can nominate.';
-  if (presidentId === targetId) return 'President cannot nominate themselves.';
+  if (presidentId === targetId && state.players.length > 1) return 'President cannot nominate themselves.';
   const target = state.players.find((p) => p.id === targetId);
   if (!target || !target.isAlive) return 'Target must be alive.';
   if (state.previousChancellorId === targetId) return 'Cannot nominate previous chancellor.';

@@ -6,8 +6,8 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
 
   switch (data.type) {
     case 'START_GAME':
-      if (state.players.length < 3) return { error: 'Need at least 3 players to start' };
-      if (state.players.length > 6) return { error: 'Maximum 6 players allowed' };
+      if (!data.test && state.players.length < 3) return { error: 'Need at least 3 players to start' };
+      if (!data.test && state.players.length > 6) return { error: 'Maximum 6 players allowed' };
       return { state: CoupLogic.setupCoup(state) };
 
     case 'COUP_ACTION': {
@@ -260,17 +260,31 @@ function resolveAction(state: any, broadcastState: (sid: string) => void) {
   // Otherwise, Execution
   const actor = state.players.find((p: any) => p.id === actorId);
 
-  if (type === 'TAX') actor.coins += 3;
-  if (type === 'FOREIGN_AID') actor.coins += 2;
+  if (type === 'TAX') { actor.coins += 3; state.lastMove.details = `${actor.name} successfully collected Tax.`; }
+  if (type === 'FOREIGN_AID') { actor.coins += 2; state.lastMove.details = `${actor.name} successfully collected Foreign Aid.`; }
   if (type === 'STEAL') {
     const target = state.players.find((p: any) => p.id === targetId);
     if (target) {
       const amount = Math.min(target.coins, 2);
       target.coins -= amount;
       actor.coins += amount;
+      state.lastMove.details = `${actor.name} successfully stole ${amount} coins from ${target.name}.`;
     }
   }
   if (type === 'ASSASSINATE') {
+    state.lastMove.details = `${actor.name} successfully assassinated ${state.players.find((p: any) => p.id === targetId)?.name}.`;
+    
+    const target = state.players.find((p: any) => p.id === targetId);
+    const hasInfluences = target?.influences?.some((i: any) => !i.isRevealed);
+    
+    if (!hasInfluences) {
+      state.phase = 'PLAYING';
+      state.pendingAction = null;
+      moveToNextTurn(state);
+      broadcastState(state.sessionId);
+      return;
+    }
+
     state.phase = 'SELECT_INFLUENCE_TO_LOSE';
     state.loserId = targetId;
     state.resolution = 'ACTION_COMPLETE';
@@ -279,6 +293,7 @@ function resolveAction(state: any, broadcastState: (sid: string) => void) {
     return;
   }
   if (type === 'EXCHANGE') {
+    state.lastMove.details = `${actor.name} successfully used Exchange.`;
     const unrevealedRoles = actor.influences.filter((i: any) => !i.isRevealed).map((i: any) => i.role);
     const drawnRoles = [state.deck.shift(), state.deck.shift()];
     state.exchangeOptions = [...unrevealedRoles, ...drawnRoles];
