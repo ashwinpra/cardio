@@ -7,7 +7,10 @@ import {
   enactPolicy,
   topDeckChaosPolicy,
   hitlerElectedAsChancellor,
-  getAliveCount
+  getAliveCount,
+  handleInvestigate,
+  handleSpecialElection,
+  handleExecute
 } from './logic';
 import type { SecretHitlerState, SecretHitlerPlayer } from './types';
 
@@ -114,6 +117,54 @@ describe('Secret Hitler Logic Tests', () => {
       expect(next.fascistPolicies).toBe(6);
       expect(next.phase).toBe('GAME_OVER');
       expect(next.winner).toBe('FASCIST');
+    });
+  });
+
+  describe('handleInvestigate', () => {
+    it('records investigation result', () => {
+      const state = setupSecretHitler(makeLobbyState(players));
+      state.executiveAction = 'INVESTIGATE';
+      state.presidentId = 'p1';
+      const { state: next, error } = handleInvestigate(state, 'p1', 'p2');
+      expect(error).toBeUndefined();
+      expect(next.investigateResults['p1']).toBeDefined();
+      expect(next.investigateResults['p1']?.targetName).toBe('Bob');
+      expect(next.executiveAction).toBeNull();
+    });
+  });
+
+  describe('handleSpecialElection', () => {
+    it('sets new president and tracks return index', () => {
+      const state = setupSecretHitler(makeLobbyState(players));
+      state.presidentId = 'p1'; // index 0
+      const next = handleSpecialElection(state, 'p3');
+      expect(next.presidentId).toBe('p3');
+      expect(next.specialElectionReturnIndex).toBe(0);
+      expect(next.executiveAction).toBeNull();
+    });
+  });
+
+  describe('handleExecute', () => {
+    it('kills target and moves to next government', () => {
+      const state = setupSecretHitler(makeLobbyState(players));
+      state.presidentId = 'p1';
+      // p2 is LIBERAL
+      const next = handleExecute(state, 'p2');
+      expect(next.players.find(p => p.id === 'p2')?.isAlive).toBe(false);
+      expect(next.phase).toBe('NOMINATE_CHANCELLOR');
+      expect(next.executiveAction).toBeNull();
+    });
+
+    it('ends game if Hitler is executed', () => {
+      const state = setupSecretHitler(makeLobbyState(players));
+      state.presidentId = 'p1';
+      // Make p2 Hitler
+      state.players[1].role = 'HITLER';
+      const next = handleExecute(state, 'p2');
+      expect(next.players.find(p => p.id === 'p2')?.isAlive).toBe(false);
+      expect(next.phase).toBe('GAME_OVER');
+      expect(next.winner).toBe('LIBERAL');
+      expect(next.executiveAction).toBeNull();
     });
   });
 });

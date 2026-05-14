@@ -10,7 +10,12 @@ import * as SecretHitlerHandler from './games/secretHitler.js';
 import * as HanabiHandler from './games/hanabi.js';
 import * as LoveLetterHandler from './games/love_letter.js';
 import * as SpadesHandler from './games/spades.js';
-import type { BaseGameState as GameState, GameType } from '../src/shared/types.js';
+import type { GameState as LiteratureState } from '../src/games/literature/types.js';
+import type { GameState as CoupState } from '../src/games/coup/types.js';
+import type { SecretHitlerState } from '../src/games/secretHitler/types.js';
+import type { BaseGameState, GameType } from '../src/shared/types.js';
+
+type GameStateUnion = LiteratureState | CoupState | SecretHitlerState | BaseGameState;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,7 +52,7 @@ const MAX_PLAYERS: Record<string, number> = {
 // ─── Types ───────────────────────────────────────────────
 interface Session {
   clients: Map<WebSocket, string>; // ws -> playerId
-  state: GameState;
+  state: GameStateUnion;
   gameType: GameType;
   hostPlayerId: string | null; // first player to join is host
   cleanupTimer: ReturnType<typeof setTimeout> | null;
@@ -116,7 +121,7 @@ function pruneDeadClients(session: Session) {
   }
 }
 
-function sanitizeStateForPlayer(state: any, playerId: string): any {
+function sanitizeStateForPlayer(state: GameStateUnion, playerId: string): GameStateUnion {
   if (state.gameType === 'LITERATURE') {
     const cardCounts: Record<string, number> = {};
     for (const [id, hand] of Object.entries(state.hands || {})) {
@@ -177,7 +182,7 @@ function sanitizeStateForPlayer(state: any, playerId: string): any {
   return state;
 }
 
-function createEmptyState(sessionId: string, gameType: GameType): any {
+function createEmptyState(sessionId: string, gameType: GameType): GameStateUnion {
   const base = {
     sessionId,
     gameType,

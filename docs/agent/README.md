@@ -10,7 +10,7 @@ This directory contains structured context for AI coding agents working in the C
 | [`architecture.md`](./architecture.md) | Server internals, WebSocket protocol, sanitization, handler interface, adding a game |
 | [`games/literature.md`](./games/literature.md) | Literature: state shape, actions, invariants, change checklist |
 | [`games/coup.md`](./games/coup.md) | Coup: state shape, phases, sanitization |
-| [`games/secret_hitler.md`](./games/secret_hitler.md) | Secret Hitler: state shape, phases, role-reveal rules |
+| [`games/secretHitler.md`](./games/secretHitler.md) | Secret Hitler: state shape, phases, role-reveal rules |
 | [`games/partial_games.md`](./games/partial_games.md) | Hanabi, Love Letter, Spades: current status, state shapes, known gaps |
 
 ## When to read what

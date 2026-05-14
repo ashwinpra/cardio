@@ -191,60 +191,17 @@ export function handleAction(state: SecretHitlerState, data: any) {
         if (targetId === actorId) return { error: 'Cannot target yourself.' };
 
         if (state.executiveAction === 'INVESTIGATE') {
-          const target = state.players.find((p) => p.id === targetId);
-          const party = target?.partyMembership;
-          if (!target || !party) return { error: 'Target does not have a valid membership card.' };
-          return {
-            state: SH.moveToNextGovernment({
-              ...state,
-              executiveAction: null,
-              investigateResults: {
-                ...state.investigateResults,
-                [actorId]: { targetName: target.name, party },
-              },
-            }),
-          };
+          const result = SH.handleInvestigate(state, actorId, targetId);
+          if (result.error) return { error: result.error };
+          return { state: result.state };
         }
 
         if (state.executiveAction === 'SPECIAL_ELECTION') {
-          const currentPresidentIndex = state.presidentId
-            ? state.players.findIndex((p) => p.id === state.presidentId)
-            : 0;
-          return {
-            state: {
-              ...state,
-              executiveAction: null,
-              presidentId: targetId,
-              nominatedChancellorId: null,
-              votes: {},
-              phase: 'NOMINATE_CHANCELLOR',
-              specialElectionReturnIndex: currentPresidentIndex,
-            },
-          };
+          return { state: SH.handleSpecialElection(state, targetId) };
         }
 
         if (state.executiveAction === 'EXECUTE') {
-          const players = state.players.map((p) => (p.id === targetId ? { ...p, isAlive: false } : p));
-          const target = players.find((p) => p.id === targetId);
-          if (target?.role === 'HITLER') {
-            return {
-              state: {
-                ...state,
-                players,
-                phase: 'GAME_OVER',
-                winner: 'LIBERAL',
-                winnerReason: 'Hitler was executed.',
-                executiveAction: null,
-              },
-            };
-          }
-          return {
-            state: SH.moveToNextGovernment({
-              ...state,
-              players,
-              executiveAction: null,
-            }),
-          };
+          return { state: SH.handleExecute(state, targetId) };
         }
       }
 

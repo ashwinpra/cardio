@@ -202,3 +202,11 @@ Target pure functions in `logic.ts` for unit tests. Handler tests should verify 
 npm test           # single run
 npm run test:watch # watch mode
 ```
+
+---
+
+## Recent Infrastructure Improvements
+
+- **Strict Immutability**: The core game logic (Literature, Coup, Secret Hitler) now strictly enforces immutable state transformations. Functions return entirely new state objects instead of mutating the incoming state, ensuring predictability and simplifying UI re-renders.
+- **Unified Logic**: Server-side duplicate code has been heavily refactored. Action resolution logic (like `CLAIM_BOOK` in Literature or `INVESTIGATE` in Secret Hitler) has been centralized in pure, isomorphic functions within `src/games/*/logic.ts` that both the client and server share.
+- **Robust Typing**: Type safety has been hardened in the WebSocket handlers (e.g., using `GameStateUnion` instead of `any` in state sanitization).
