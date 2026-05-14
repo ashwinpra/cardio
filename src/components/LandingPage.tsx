@@ -23,19 +23,28 @@ export default function LandingPage() {
     <div className="bg-surface text-on-surface antialiased min-h-screen flex flex-col font-body-md text-body-md">
       <header className="w-full py-6 flex justify-center items-center bg-surface/90 backdrop-blur-md relative z-50 border-b border-outline-variant/30 sticky top-0 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="flex items-center gap-3 cursor-default group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-tertiary-container flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-            <span className="material-symbols-outlined text-on-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>playing_cards</span>
+          <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border-2 border-outline-variant/40 flex items-center justify-center shadow-lg shadow-primary/5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+            <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>playing_cards</span>
           </div>
-          <div className="font-headline-lg-mobile text-headline-lg-mobile bg-gradient-to-r from-primary via-tertiary-container to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent select-none drop-shadow-sm">
-            Cardio
+          <div className="font-headline-lg-mobile text-headline-lg-mobile font-bold select-none drop-shadow-sm tracking-tight">
+            <span className="text-on-surface">Card</span>
+            <span className="text-primary">io</span>
           </div>
         </div>
       </header>
-      <main className="flex-1 flex flex-col lg:flex-row">
-        <section className="w-full lg:w-1/2 bg-surface-container-lowest p-container-margin md:p-section-gap flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-outline-variant/30">
-          <div className="max-w-md mx-auto w-full">
+      <main className="relative flex-1 flex flex-col lg:flex-row">
+        {/* OR Divider */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="w-16 h-16 rounded-full bg-surface-container-lowest border-2 border-outline-variant/40 flex items-center justify-center font-headline-sm text-headline-sm uppercase text-primary shadow-lg tracking-[0.1em]">
+            OR
+          </div>
+        </div>
+
+        <section className="relative w-full lg:w-1/2 bg-surface-container-lowest p-container-margin md:p-section-gap flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-outline-variant/30 overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-tertiary-container/5 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="max-w-md mx-auto w-full relative z-10">
             <h1 className="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg mb-2 text-on-surface">Host a Game</h1>
-            <p className="font-body-lg text-body-lg text-on-surface-variant mb-12">Select a module to initialize a new lobby.</p>
+            <p className="font-body-lg text-body-lg mb-8 text-on-background"></p>
             <div className="flex flex-col gap-4">
               {Object.entries(GAME_RULES).map(([id, rule]) => (
                 <button
@@ -55,7 +64,7 @@ export default function LandingPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-container/5 rounded-full blur-3xl pointer-events-none"></div>
           <div className="max-w-sm w-full relative z-10 text-center">
             <h2 className="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg mb-2 text-on-surface">Join a Game</h2>
-            <p className="font-body-lg text-body-lg text-on-surface-variant mb-12">Enter the 4-character room code to connect.</p>
+            <p className="font-body-lg text-body-lg text-on-surface-variant mb-12">Enter the 4-character room code to connect</p>
             <div className="flex flex-col gap-8">
               <div className="relative">
                 <input
