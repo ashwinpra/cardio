@@ -179,6 +179,50 @@ function sanitizeStateForPlayer(state: GameStateUnion, playerId: string): GameSt
     };
   }
 
+  if (state.gameType === 'HANABI') {
+    const me = state.players.find((p: any) => p.id === playerId);
+    return {
+      ...state,
+      players: state.players.map((p: any) => ({
+        ...p,
+        // Hide hand from the player themselves
+        hand: p.id === playerId 
+          ? p.hand.map((card: any) => ({
+              id: card.id,
+              color: 'HIDDEN',
+              rank: 0,
+              hintedColor: card.hintedColor,
+              hintedRank: card.hintedRank
+            }))
+          : p.hand
+      }))
+    };
+  }
+
+  if (state.gameType === 'LOVE_LETTER') {
+    return {
+      ...state,
+      deck: [], // Hide deck completely
+      players: state.players.map((p: any) => ({
+        ...p,
+        hand: p.id === playerId ? p.hand : p.hand.map((card: any) => ({ role: 'HIDDEN', value: 0 }))
+      })),
+      setAsideCard: state.setAsideCard ? { role: 'HIDDEN', value: 0 } : null,
+      priestPeeks: state.priestPeeks ? state.priestPeeks.filter((peek: any) => peek.viewerId === playerId) : []
+    };
+  }
+
+  if (state.gameType === 'SPADES') {
+    return {
+      ...state,
+      deck: [],
+      players: state.players.map((p: any) => ({
+        ...p,
+        hand: p.id === playerId ? p.hand : []
+      }))
+    };
+  }
+
   return state;
 }
 
@@ -252,6 +296,7 @@ function createEmptyState(sessionId: string, gameType: GameType): GameStateUnion
       hintTokens: 8,
       mistakeTokens: 0,
       score: 0,
+      turnsLeft: null,
     };
   }
 
@@ -259,10 +304,12 @@ function createEmptyState(sessionId: string, gameType: GameType): GameStateUnion
     return {
       ...base,
       deck: [],
+      setAsideCard: null,
       discardPile: [],
       eliminatedThisRound: [],
       currentRound: 1,
-      handmaidProtection: null,
+      handmaidProtections: [],
+      priestPeeks: [],
     };
   }
 

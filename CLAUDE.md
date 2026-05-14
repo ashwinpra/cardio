@@ -106,9 +106,9 @@ The server does NOT globally enforce turn order — each game handler is respons
 | Literature | ✅ Fully implemented + tested | 6 or 8 | Team-based half-suit claiming |
 | Coup | ✅ Fully implemented | 2–6 | Bluffing, challenges, blocking |
 | Secret Hitler | ✅ Fully implemented | 5–10 | Hidden roles, legislative rounds |
-| Hanabi | ⚠️ Partial (logic stubs) | 2–5 | Cooperative, hidden-hand hints |
-| Love Letter | ⚠️ Partial (logic stubs) | 2–4 | Single-card elimination rounds |
-| Spades | ⚠️ Partial (logic stubs) | 4 | Trick-taking, bidding |
+| Hanabi | ✅ Fully implemented | 2–5 | Cooperative, hidden-hand hints |
+| Love Letter | ✅ Fully implemented | 2–4 | Single-card elimination rounds |
+| Spades | ✅ Fully implemented | 4 | Trick-taking, bidding |
 
 Per-game detail in [`docs/agent/games/`](./docs/agent/games/).
 

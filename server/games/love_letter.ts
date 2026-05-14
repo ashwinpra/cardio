@@ -7,51 +7,39 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
   if (!actor) return { state };
 
   switch (data.type) {
-    case 'START_GAME':
+    case 'START_GAME': {
       if (!data.test && (state.players.length < 2 || state.players.length > 4)) {
         return { error: `Need 2-4 players to start Love Letter (${state.players.length} present)` };
       }
       return { state: LoveLetterLogic.setupLoveLetter(state) };
+    }
 
-    case 'PLAY_CARD':
+    case 'PLAY_CARD': {
       if (state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn' };
       }
 
-      // Play the card
-      LoveLetterLogic.playCard(state, actorId, data.cardRole);
+      const result = LoveLetterLogic.playCard(
+        state,
+        actorId,
+        data.cardRole,
+        data.targetPlayerId,
+        data.guessedRole
+      );
 
-      // Handle card effects
-      if (data.targetPlayerId) {
-        LoveLetterLogic.handleCardEffect(
-          state,
-          actorId,
-          data.cardRole,
-          data.targetPlayerId,
-          data.guessedRole
-        );
-      } else if (data.cardRole === 'COUNTESS') {
-        // Countess has no effect
-      } else if (data.cardRole !== 'PRINCESS') {
-        // Cards that don't need targets or have passive effects
-        LoveLetterLogic.handleCardEffect(state, actorId, data.cardRole);
-      }
+      if (result.error) return result;
 
-      state.lastMove = {
+      const newState = result.state!;
+      newState.lastMove = {
         type: 'PLAY_CARD',
         timestamp: new Date().toISOString(),
         playerName: actor.name,
-        details: `${actor.name} played ${data.cardRole}`,
+        details: `${actor.name} played ${data.cardRole}${data.targetPlayerId ? ' on ' + state.players.find((p: any) => p.id === data.targetPlayerId)?.name : ''}`,
         success: true
       };
 
-      // Check if round ended
-      if (LoveLetterLogic.checkRoundEnd(state)) {
-        LoveLetterLogic.endRound(state);
-      } else {
-        state.activePlayerIndex = (state.activePlayerIndex + 1) % state.players.length;
-      }
-      break;
+      return { state: newState };
+    }
   }
 
   return { state };

@@ -1,6 +1,6 @@
 import type { Player as BasePlayer, Move as BaseMove, BaseGameState } from '../../shared/types';
 
-export type LoveLetterRole = 'GUARD' | 'PRIEST' | 'BARON' | 'HANDMAID' | 'PRINCE' | 'KING' | 'COUNTESS' | 'PRINCESS';
+export type LoveLetterRole = 'GUARD' | 'PRIEST' | 'BARON' | 'HANDMAID' | 'PRINCE' | 'KING' | 'COUNTESS' | 'PRINCESS' | 'HIDDEN';
 
 export interface Card {
   role: LoveLetterRole;
@@ -28,8 +28,10 @@ export interface GameState extends BaseGameState {
   gameType: 'LOVE_LETTER';
   players: Player[];
   deck: Card[];
+  setAsideCard: Card | null;
   discardPile: Card[];
   eliminatedThisRound: string[];
   currentRound: number;
-  handmaidProtection: string | null; // Player ID protected by Handmaid
+  handmaidProtections: string[]; // Player IDs protected by Handmaid
+  priestPeeks: { viewerId: string; targetId: string; cardRole: LoveLetterRole }[];
 }

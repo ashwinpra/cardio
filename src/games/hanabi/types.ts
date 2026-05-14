@@ -1,11 +1,14 @@
 import type { Player as BasePlayer, Move as BaseMove, BaseGameState } from '../../shared/types';
 
-export type HanabiColor = 'RED' | 'BLUE' | 'GREEN' | 'YELLOW' | 'WHITE';
-export type HanabiRank = 1 | 2 | 3 | 4 | 5;
+export type HanabiColor = 'RED' | 'BLUE' | 'GREEN' | 'YELLOW' | 'WHITE' | 'HIDDEN';
+export type HanabiRank = 0 | 1 | 2 | 3 | 4 | 5; // 0 for hidden
 
 export interface Card {
+  id: string;
   color: HanabiColor;
   rank: HanabiRank;
+  hintedColor?: boolean;
+  hintedRank?: boolean;
 }
 
 export interface HintToken {
@@ -41,4 +44,5 @@ export interface GameState extends BaseGameState {
   hintTokens: number;
   mistakeTokens: number;
   score: number;
+  turnsLeft: number | null;
 }

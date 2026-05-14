@@ -4,7 +4,7 @@ import RulesButton from '../../components/RulesButton';
 import type { GameState, LoveLetterRole } from './types';
 
 const ROLE_VALUES: Record<LoveLetterRole, number> = {
-  GUARD: 1, PRIEST: 2, BARON: 3, HANDMAID: 4, PRINCE: 5, KING: 6, COUNTESS: 7, PRINCESS: 8,
+  GUARD: 1, PRIEST: 2, BARON: 3, HANDMAID: 4, PRINCE: 5, KING: 6, COUNTESS: 7, PRINCESS: 8, HIDDEN: 0
 };
 
 const ROLE_ICONS: Record<LoveLetterRole, string> = {
@@ -16,6 +16,7 @@ const ROLE_ICONS: Record<LoveLetterRole, string> = {
   KING: 'star',
   COUNTESS: 'favorite_border',
   PRINCESS: 'diamond',
+  HIDDEN: 'visibility_off',
 };
 
 const ROLE_DESC: Record<LoveLetterRole, string> = {
@@ -27,6 +28,7 @@ const ROLE_DESC: Record<LoveLetterRole, string> = {
   KING: 'Trade hands with another player of your choice.',
   COUNTESS: 'If you have this card and the King or Prince, you must discard this card.',
   PRINCESS: 'If you discard this card, you are knocked out of the round.',
+  HIDDEN: 'Hidden card',
 };
 
 export default function LoveLetterBoard() {
@@ -102,6 +104,9 @@ export default function LoveLetterBoard() {
                   <div key={p.id} className={`${positionClass} flex flex-col items-center gap-2 transition-transform cursor-pointer ${p.isEliminated ? 'opacity-40 grayscale' : ''} ${targetPlayerId === p.id ? 'scale-110' : ''}`} onClick={() => !p.isEliminated && setTargetPlayerId(p.id)}>
                     <div className={`bg-surface-container-lowest px-4 py-1.5 rounded-full shadow-sm border flex items-center gap-3 ${state.players[state.activePlayerIndex]?.id === p.id ? 'border-secondary ring-2 ring-secondary/20' : 'border-surface-variant'} ${targetPlayerId === p.id ? 'border-primary ring-2 ring-primary/50' : ''}`}>
                       <span className={`font-label-md text-label-md truncate max-w-[100px] md:max-w-[150px] ${p.isEliminated ? 'line-through text-on-surface-variant' : 'text-on-surface'}`}>{p.name}</span>
+                      {state.handmaidProtections?.includes(p.id) && (
+                        <span className="material-symbols-outlined text-secondary text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
+                      )}
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-primary-container text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
                         <span className="font-label-md text-label-md text-primary">{p.tokens || 0}</span>

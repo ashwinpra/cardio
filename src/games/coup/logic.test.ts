@@ -7,10 +7,10 @@ import {
   isBlockable,
   getBlockingRoles,
 } from './logic';
-import type { GameState, Player, Move } from './types';
+import type { GameState, Player } from './types';
 
 function makePlayer(id: string, name: string): Player {
-  return { id, name, coins: 0, influences: [], isConnected: true };
+  return { id, name, coins: 0, influences: [], isConnected: true, seatIndex: 0, team: 'TEAM_A' };
 }
 
 function makeLobbyState(players: Player[]): GameState {

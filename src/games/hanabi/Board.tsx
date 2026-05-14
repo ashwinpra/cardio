@@ -12,6 +12,7 @@ const colorConfig: Record<HanabiColor, { bg: string, text: string, shadow: strin
   GREEN: { bg: 'bg-green-500', text: 'text-green-500', shadow: 'shadow-green-500/20', border: 'border-green-500', bgLow: 'bg-green-500/10' },
   YELLOW: { bg: 'bg-yellow-400', text: 'text-yellow-500', shadow: 'shadow-yellow-500/20', border: 'border-yellow-400', bgLow: 'bg-yellow-400/10' },
   WHITE: { bg: 'bg-white', text: 'text-outline', shadow: 'shadow-outline/10', border: 'border-outline-variant', bgLow: 'bg-surface-variant' },
+  HIDDEN: { bg: 'bg-slate-700', text: 'text-transparent', shadow: 'shadow-black/50', border: 'border-slate-600', bgLow: 'bg-slate-700/20' }
 };
 
 export default function HanabiBoard() {
@@ -92,8 +93,12 @@ export default function HanabiBoard() {
                  <span className="font-label-md text-[10px] md:text-label-md text-on-surface-variant mt-2">Mistakes ({state.mistakeTokens})</span>
               </div>
               <div className="flex flex-col items-center">
-                 <span className="font-headline-sm text-lg md:text-headline-sm text-on-surface leading-none pt-1">{state.deck?.length || 0}</span>
-                 <span className="font-label-md text-[10px] md:text-label-md text-on-surface-variant mt-2">Deck</span>
+                 <span className="font-headline-sm text-lg md:text-headline-sm text-on-surface leading-none pt-1">
+                   {state.turnsLeft !== null ? state.turnsLeft : (state.deck?.length || 0)}
+                 </span>
+                 <span className="font-label-md text-[10px] md:text-label-md text-on-surface-variant mt-2">
+                   {state.turnsLeft !== null ? 'Turns Left' : 'Deck'}
+                 </span>
               </div>
            </div>
         </section>
