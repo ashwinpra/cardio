@@ -201,16 +201,24 @@ export function handleClaim(gameState: GameState, claimerId: string, halfSuit: H
   };
 
   const maxBooks = gameState.players.length === 8 ? 8 : 9;
+  const isGameOver = newBooks.length >= maxBooks;
+  let winner = gameState.winner;
+  if (isGameOver) {
+    if (newScores.teamA > newScores.teamB) winner = 'TEAM_A';
+    else if (newScores.teamB > newScores.teamA) winner = 'TEAM_B';
+    else winner = 'TIE';
+  }
 
   return {
     state: {
       ...gameState,
-      phase: newBooks.length >= maxBooks ? 'GAME_OVER' : gameState.phase,
+      phase: isGameOver ? 'GAME_OVER' : gameState.phase,
       lastMove: move,
       moveLog: [move, ...gameState.moveLog],
       hands: newHands,
       books: newBooks,
       scores: newScores,
+      ...(isGameOver && { winner }),
     },
     success: teamHoldsAll,
   };

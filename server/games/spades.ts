@@ -1,10 +1,23 @@
 import * as SpadesLogic from '../../src/games/spades/logic.js';
 
-export function handleAction(state: any, data: any, broadcastState: (sid: string) => void) {
-  const { actorId } = data;
-  const actor = state.players.find((p: any) => p.id === actorId);
+import type { GameState, Card, Player } from '../../src/games/spades/types.js';
 
-  if (!actor) return { state };
+interface ActionData {
+  type: string;
+  actorId?: string;
+  test?: boolean;
+  bid?: number;
+  card?: Card;
+}
+
+interface ActionResult {
+  state?: GameState;
+  error?: string;
+}
+
+export function handleAction(state: GameState, data: ActionData): ActionResult {
+  const { actorId } = data;
+  const actor = state.players.find((p: Player) => p.id === actorId);
 
   switch (data.type) {
     case 'START_GAME': {
@@ -15,7 +28,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
     }
 
     case 'PLACE_BID': {
-      if (state.activePlayerIndex !== state.players.indexOf(actor)) {
+      if (!actor || state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn to bid' };
       }
 
@@ -35,7 +48,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
     }
 
     case 'PLAY_CARD': {
-      if (state.activePlayerIndex !== state.players.indexOf(actor)) {
+      if (!actor || state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn to play' };
       }
 

@@ -64,9 +64,10 @@ export function placeBid(state: GameState, playerId: string, bid: number): { sta
     newState.allPlayersBid = true;
     newState.phase = 'PLAYING';
     newState.currentTrick = { leadSuit: 'SPADE', cards: [] };
+    newState.activePlayerIndex = 0; // Player 0 (left of dealer) leads first trick
+  } else {
+    newState.activePlayerIndex = (newState.activePlayerIndex + 1) % 4;
   }
-
-  newState.activePlayerIndex = (newState.activePlayerIndex + 1) % 4;
 
   return { state: newState };
 }

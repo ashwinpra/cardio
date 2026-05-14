@@ -62,7 +62,7 @@ describe('Coup Server Handler Tests', () => {
 
   describe('Coup Chain Interactions', () => {
     it('handles Steal -> Pass -> Block -> Challenge Block (Success/Bluff) -> Influence Loss -> Resolution correctly', () => {
-      let state = setupCoup(makeLobbyState([P1, P2, P3]));
+      let state = JSON.parse(JSON.stringify(setupCoup(makeLobbyState([P1, P2, P3]))));
       
       // Hardcode roles for deterministic outcomes
       state.players[0].influences[0].role = 'CAPTAIN';
@@ -110,7 +110,7 @@ describe('Coup Server Handler Tests', () => {
     });
 
     it('handles Steal -> Pass -> Block -> Challenge Block (Fail/Truthful) -> Influence Loss -> Blocked correctly', () => {
-      let state = setupCoup(makeLobbyState([P1, P2, P3]));
+      let state = JSON.parse(JSON.stringify(setupCoup(makeLobbyState([P1, P2, P3]))));
       
       // Hardcode roles
       state.players[0].influences[0].role = 'CAPTAIN';

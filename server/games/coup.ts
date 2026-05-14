@@ -1,8 +1,25 @@
 import * as CoupLogic from '../../src/games/coup/logic.js';
 
-export function handleAction(state: any, data: any, broadcastState: (sid: string) => void, dispatch?: (action: any) => void) {
+import type { GameState, Role, ActionType, Player } from '../../src/games/coup/types.js';
+
+interface ActionData {
+  type: string;
+  actorId?: string;
+  test?: boolean;
+  timestamp?: number;
+  actionType?: ActionType;
+  targetId?: string;
+  roleClaimed?: Role;
+}
+
+interface ActionResult {
+  state?: GameState;
+  error?: string;
+}
+
+export function handleAction(state: GameState, data: ActionData, broadcastState: (sid: string) => void, dispatch?: (action: any) => void): ActionResult {
   const { actorId } = data;
-  const actor = state.players.find((p: any) => p.id === actorId);
+  const actor = state.players.find((p: Player) => p.id === actorId);
 
   switch (data.type) {
     case 'START_GAME':
@@ -33,6 +50,9 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
         // Blocking Action
         if (actionType === 'BLOCK') {
           if (!state.pendingAction || !roleClaimed) return { state };
+          if (['STEAL', 'ASSASSINATE'].includes(state.pendingAction.type) && actorId !== state.pendingAction.targetId) {
+            return { error: 'Only the target can block this action' };
+          }
           const timestamp = Date.now();
           
           const nextState = {

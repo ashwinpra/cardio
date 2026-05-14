@@ -39,7 +39,7 @@ export interface GameState extends BaseGameState {
   gameType: 'HANABI';
   players: Player[];
   deck: Card[];
-  playArea: Record<HanabiColor, HanabiRank>; // e.g., RED: 3 means Red 1,2,3 are played
+  playArea: Omit<Record<HanabiColor, HanabiRank>, 'HIDDEN'>; // e.g., RED: 3 means Red 1,2,3 are played
   discardPile: Card[];
   hintTokens: number;
   mistakeTokens: number;

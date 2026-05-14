@@ -1,10 +1,25 @@
 import * as HanabiLogic from '../../src/games/hanabi/logic.js';
 
-export function handleAction(state: any, data: any, broadcastState: (sid: string) => void) {
-  const { actorId } = data;
-  const actor = state.players.find((p: any) => p.id === actorId);
+import type { GameState, HanabiColor, HanabiRank, Player } from '../../src/games/hanabi/types.js';
 
-  if (!actor) return { state };
+interface ActionData {
+  type: string;
+  actorId?: string;
+  test?: boolean;
+  cardIndex?: number;
+  targetPlayerId?: string;
+  hintType?: 'COLOR' | 'RANK';
+  hintValue?: HanabiColor | HanabiRank;
+}
+
+interface ActionResult {
+  state?: GameState;
+  error?: string;
+}
+
+export function handleAction(state: GameState, data: ActionData): ActionResult {
+  const { actorId } = data;
+  const actor = state.players.find((p: Player) => p.id === actorId);
 
   switch (data.type) {
     case 'START_GAME': {
@@ -15,7 +30,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
     }
 
     case 'PLAY_CARD': {
-      if (state.activePlayerIndex !== state.players.indexOf(actor)) {
+      if (!actor || state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn' };
       }
       const result = HanabiLogic.playCard(state, actorId, data.cardIndex);
@@ -33,7 +48,7 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
     }
 
     case 'DISCARD_CARD': {
-      if (state.activePlayerIndex !== state.players.indexOf(actor)) {
+      if (!actor || state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn' };
       }
       const result = HanabiLogic.discardCard(state, actorId, data.cardIndex);
@@ -51,14 +66,14 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
     }
 
     case 'GIVE_HINT': {
-      if (state.activePlayerIndex !== state.players.indexOf(actor)) {
+      if (!actor || state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn' };
       }
       const result = HanabiLogic.giveHint(state, actorId, data.targetPlayerId, data.hintType, data.hintValue);
       if (result.error) return result;
 
       const newState = result.state!;
-      const target = state.players.find((p: any) => p.id === data.targetPlayerId);
+      const target = state.players.find((p: Player) => p.id === data.targetPlayerId);
       newState.lastMove = {
         type: 'GIVE_HINT',
         timestamp: new Date().toISOString(),

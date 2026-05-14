@@ -47,23 +47,23 @@ const P4 = makePlayer('p4', 'Dave', 'TEAM_B', 3);
 // ─── START_GAME ───────────────────────────────────────────
 
 describe('handleAction: START_GAME', () => {
-  it('starts game with 2+ players', () => {
+  it('starts game in test mode with any players', () => {
     const state = makeLobbyState([P1, P2]);
-    const result = handleAction(state, { type: 'START_GAME' });
+    const result = handleAction(state, { type: 'START_GAME', test: true } as any);
     expect(result.error).toBeUndefined();
     expect(result.state!.phase).toBe('PLAYING');
   });
 
-  it('rejects start with fewer than 2 players', () => {
-    const state = makeLobbyState([P1]);
+  it('rejects start with invalid number of players', () => {
+    const state = makeLobbyState([P1, P2, P3, P4]);
     const result = handleAction(state, { type: 'START_GAME' });
-    expect(result.error).toBe('Need at least 2 players');
+    expect(result.error).toBe('Literature requires exactly 6 or 8 players');
   });
 
   it('deals cards to all players', () => {
     const players = [P1, P2, P3, P4];
     const state = makeLobbyState(players);
-    const result = handleAction(state, { type: 'START_GAME' });
+    const result = handleAction(state, { type: 'START_GAME', test: true } as any);
     for (const p of players) {
       expect(result.state!.hands[p.id].length).toBeGreaterThan(0);
     }

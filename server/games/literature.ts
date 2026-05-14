@@ -19,7 +19,7 @@ interface ActionResult {
 export function handleAction(state: GameState, data: ActionData): ActionResult {
   switch (data.type) {
     case 'START_GAME':
-      if (!data.test && state.players.length < 2) return { error: 'Need at least 2 players' };
+      if (!data.test && state.players.length !== 6 && state.players.length !== 8) return { error: 'Literature requires exactly 6 or 8 players' };
       return { state: LiteratureLogic.dealCards(state) };
 
     case 'ASK_CARD': {

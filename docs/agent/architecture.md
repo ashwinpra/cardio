@@ -102,7 +102,7 @@ export function handleAction(
 
 - Return `{ error }` to send an `ERROR` message to the client; state is unchanged.
 - Return `{ state }` to persist new state and broadcast to all clients.
-- The `broadcastState` callback is only needed for games that broadcast intermediate state mid-action (Coup's challenge/block resolution, Hanabi's end-of-turn, etc.).
+- The `broadcastState` callback is only needed for games that broadcast intermediate state mid-action (Coup's challenge/block resolution).
 - `data.actorId` is always the playerId of the WS that sent the message (injected by server).
 
 ---
@@ -193,8 +193,11 @@ interface BaseGameState { sessionId, gameType, phase, players, activePlayerIndex
 ## Testing
 
 Tests live co-located with the modules they test:
-- `src/games/literature/logic.test.ts` — 47 unit tests for pure game logic
-- `server/games/literature.test.ts` — 12 integration tests for the server handler
+- `src/games/*/logic.test.ts` — Pure game logic unit tests (e.g., Literature: 47, Coup: 11, Secret Hitler: 12)
+- `server/games/*.test.ts` — Server handler integration tests (e.g., Literature: 12, Secret Hitler: 8)
+- `server/index.test.ts` — Server core logic (Sanitization)
+
+There are 130+ tests across the codebase.
 
 Target pure functions in `logic.ts` for unit tests. Handler tests should verify validation, happy path, and edge cases (turn enforcement, missing fields, game-over).
 

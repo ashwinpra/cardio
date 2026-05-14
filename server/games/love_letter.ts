@@ -1,10 +1,24 @@
 import * as LoveLetterLogic from '../../src/games/love_letter/logic.js';
 
-export function handleAction(state: any, data: any, broadcastState: (sid: string) => void) {
-  const { actorId } = data;
-  const actor = state.players.find((p: any) => p.id === actorId);
+import type { GameState, LoveLetterRole, Player } from '../../src/games/love_letter/types.js';
 
-  if (!actor) return { state };
+interface ActionData {
+  type: string;
+  actorId?: string;
+  test?: boolean;
+  cardRole?: LoveLetterRole;
+  targetPlayerId?: string;
+  guessedRole?: LoveLetterRole;
+}
+
+interface ActionResult {
+  state?: GameState;
+  error?: string;
+}
+
+export function handleAction(state: GameState, data: ActionData): ActionResult {
+  const { actorId } = data;
+  const actor = state.players.find((p: Player) => p.id === actorId);
 
   switch (data.type) {
     case 'START_GAME': {
@@ -15,8 +29,12 @@ export function handleAction(state: any, data: any, broadcastState: (sid: string
     }
 
     case 'PLAY_CARD': {
-      if (state.activePlayerIndex !== state.players.indexOf(actor)) {
+      if (!actor || state.activePlayerIndex !== state.players.indexOf(actor)) {
         return { error: 'Not your turn' };
+      }
+
+      if (data.cardRole === 'PRINCE' && !data.targetPlayerId) {
+        return { error: 'Prince must target a player' };
       }
 
       const result = LoveLetterLogic.playCard(

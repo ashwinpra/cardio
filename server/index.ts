@@ -13,9 +13,12 @@ import * as SpadesHandler from './games/spades.js';
 import type { GameState as LiteratureState } from '../src/games/literature/types.js';
 import type { GameState as CoupState } from '../src/games/coup/types.js';
 import type { SecretHitlerState } from '../src/games/secretHitler/types.js';
+import type { GameState as HanabiState } from '../src/games/hanabi/types.js';
+import type { GameState as LoveLetterState } from '../src/games/love_letter/types.js';
+import type { GameState as SpadesState } from '../src/games/spades/types.js';
 import type { BaseGameState, GameType } from '../src/shared/types.js';
 
-type GameStateUnion = LiteratureState | CoupState | SecretHitlerState | BaseGameState;
+type GameStateUnion = LiteratureState | CoupState | SecretHitlerState | HanabiState | LoveLetterState | SpadesState | BaseGameState;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,7 +70,9 @@ const sessions: Record<string, Session> = {};
 
 function generateSessionId(): string {
   let id: string;
+  let attempts = 0;
   do {
+    if (attempts++ > 100) throw new Error('Could not generate unique session ID');
     id = crypto.randomBytes(2).toString('hex').toUpperCase();
   } while (sessions[id]);
   return id;
@@ -92,10 +97,10 @@ function broadcastState(sessionId: string) {
 
 /** Mark a player as connected/disconnected in game state */
 function setPlayerConnected(session: Session, playerId: string, connected: boolean) {
-  const player = session.state.players.find((p: any) => p.id === playerId);
-  if (player) {
-    (player as any).isConnected = connected;
-  }
+  session.state = {
+    ...session.state,
+    players: session.state.players.map((p: any) => p.id === playerId ? { ...p, isConnected: connected } : p)
+  };
 }
 
 /** Check if any WS in the session is bound to this playerId and is still OPEN */
@@ -127,11 +132,12 @@ function sanitizeStateForPlayer(state: GameStateUnion, playerId: string): GameSt
     for (const [id, hand] of Object.entries(state.hands || {})) {
       cardCounts[id] = (hand as any[]).length;
     }
+    const { deck, ...rest } = state;
     return {
-      ...state,
+      ...rest,
       hands: { [playerId]: state.hands[playerId] || [] },
-      cardCounts,
-    };
+      playerCardCounts: cardCounts,
+    } as any;
   }
   
   if (state.gameType === 'COUP') {
@@ -164,9 +170,12 @@ function sanitizeStateForPlayer(state: GameStateUnion, playerId: string): GameSt
         if (target) target.role = 'HITLER';
       }
     } else if (me?.role === 'HITLER') {
-      for (const fascist of fascists) {
-        const target = visiblePlayers.find((p: any) => p.id === fascist.id);
-        if (target) target.role = 'FASCIST';
+      const playerCount = state.players.length;
+      if (playerCount <= 6) {
+        for (const fascist of fascists) {
+          const target = visiblePlayers.find((p: any) => p.id === fascist.id);
+          if (target) target.role = 'FASCIST';
+        }
       }
     }
 
@@ -346,17 +355,37 @@ const heartbeatInterval = setInterval(() => {
 wss.on('close', () => clearInterval(heartbeatInterval));
 
 // ─── Connection Handler ──────────────────────────────────
+const RATE_LIMIT_WINDOW_MS = 1000;
+const MAX_MESSAGES_PER_WINDOW = 20;
+
+export { sanitizeStateForPlayer }; // Export for testing
+
 wss.on('connection', (ws) => {
   console.log('Client connected');
   wsAliveMap.set(ws, true);
   let currentSessionId: string | null = null;
   let myPlayerId: string | null = null;
+  
+  let messageCount = 0;
+  let windowStart = Date.now();
 
   ws.on('pong', () => {
     wsAliveMap.set(ws, true);
   });
 
   ws.on('message', (raw) => {
+    const now = Date.now();
+    if (now - windowStart > RATE_LIMIT_WINDOW_MS) {
+      messageCount = 1;
+      windowStart = now;
+    } else {
+      messageCount++;
+      if (messageCount > MAX_MESSAGES_PER_WINDOW) {
+        ws.send(JSON.stringify({ type: 'ERROR', message: 'Rate limit exceeded' }));
+        return;
+      }
+    }
+
     try {
       const data = JSON.parse(raw.toString());
       console.log('Received:', data.type);
@@ -376,6 +405,7 @@ wss.on('connection', (ws) => {
           };
           currentSessionId = sessionId;
           ws.send(JSON.stringify({ type: 'SESSION_CREATED', sessionId, gameType }));
+          broadcastState(sessionId);
           break;
         }
 
@@ -457,7 +487,10 @@ wss.on('connection', (ws) => {
               break;
             }
 
-            session.state.players.push({ ...player, name: trimmedName, isConnected: true });
+            session.state = {
+              ...session.state,
+              players: [...session.state.players, { ...player, name: trimmedName, isConnected: true }]
+            };
             session.clients.set(ws, player.id);
             myPlayerId = player.id;
 
@@ -475,32 +508,46 @@ wss.on('connection', (ws) => {
         case 'CLAIM_BOOK':
         case 'COUP_ACTION':
         case 'SECRET_HITLER_ACTION':
+        case 'PLACE_BID':
+        case 'PLAY_CARD':
+        case 'DISCARD_CARD':
+        case 'GIVE_HINT':
+        case 'MOVE_CARD':
         case 'GAME_ACTION': {
           if (!session || !currentSessionId) break;
+          
+          if (data.targetId && typeof data.targetId !== 'string') break;
+          if (data.actionType && typeof data.actionType !== 'string') break;
+          if (data.roleClaimed && typeof data.roleClaimed !== 'string') break;
+          if (data.influenceIndex !== undefined && typeof data.influenceIndex !== 'number') break;
 
           const dispatch = (actionData: any, sendError: boolean = false) => {
-            if (!session || !currentSessionId) return;
+            const liveSession = currentSessionId ? sessions[currentSessionId] : null;
+            if (!liveSession) return;
             let result: { state?: any; error?: string } = {};
 
-            if (session.gameType === 'LITERATURE') {
-              result = LiteratureHandler.handleAction(session.state as any, actionData);
-            } else if (session.gameType === 'COUP') {
-              result = CoupHandler.handleAction(session.state as any, actionData, broadcastState, dispatch);
-            } else if (session.gameType === 'SECRET_HITLER') {
-              result = SecretHitlerHandler.handleAction(session.state as any, actionData);
-            } else if (session.gameType === 'HANABI') {
-              result = HanabiHandler.handleAction(session.state as any, actionData, broadcastState);
-            } else if (session.gameType === 'LOVE_LETTER') {
-              result = LoveLetterHandler.handleAction(session.state as any, actionData, broadcastState);
-            } else if (session.gameType === 'SPADES') {
-              result = SpadesHandler.handleAction(session.state as any, actionData, broadcastState);
+            if (liveSession.gameType === 'LITERATURE') {
+              result = LiteratureHandler.handleAction(liveSession.state as any, actionData);
+            } else if (liveSession.gameType === 'COUP') {
+              result = CoupHandler.handleAction(liveSession.state as any, actionData, broadcastState, dispatch);
+            } else if (liveSession.gameType === 'SECRET_HITLER') {
+              result = SecretHitlerHandler.handleAction(liveSession.state as any, actionData);
+            } else if (liveSession.gameType === 'HANABI') {
+              result = HanabiHandler.handleAction(liveSession.state as any, actionData);
+            } else if (liveSession.gameType === 'LOVE_LETTER') {
+              result = LoveLetterHandler.handleAction(liveSession.state as any, actionData);
+            } else if (liveSession.gameType === 'SPADES') {
+              result = SpadesHandler.handleAction(liveSession.state as any, actionData);
             }
 
             if (result.error && sendError) {
               ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
             } else if (result.state) {
-              session.state = result.state;
-              broadcastState(currentSessionId);
+              liveSession.state = result.state;
+              if (liveSession.state.moveLog && liveSession.state.moveLog.length > 50) {
+                liveSession.state.moveLog = liveSession.state.moveLog.slice(-50);
+              }
+              broadcastState(currentSessionId!);
             }
           };
 

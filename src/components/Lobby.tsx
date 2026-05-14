@@ -163,11 +163,13 @@ export default function Lobby() {
                       className="w-full py-4 rounded-xl bg-primary text-on-primary font-label-md text-sm transition-all hover:opacity-90 active:scale-95">
                       Start {cleanGameString(gameState.gameType)}
                     </button>
-                    <button onClick={() => sendMessage({ type: 'START_GAME', test: true })}
-                      className="w-full py-2 rounded-xl text-primary font-label-md text-xs mt-3 border border-primary transition-all hover:bg-primary-container/20 active:scale-95"
-                    >
-                      Debug UI (1 Player)
-                    </button>
+                    {import.meta.env.DEV && (
+                      <button onClick={() => sendMessage({ type: 'START_GAME', test: true })}
+                        className="w-full py-2 rounded-xl text-primary font-label-md text-xs mt-3 border border-primary transition-all hover:bg-primary-container/20 active:scale-95"
+                      >
+                        Debug UI (1 Player)
+                      </button>
+                    )}
                   </>
                 ) : (
                   <div className="w-full py-4 rounded-xl bg-surface-variant text-on-surface-variant font-label-md text-sm text-center">

@@ -90,27 +90,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         switch (data.type) {
           case 'SESSION_CREATED':
             isAutoReconnectAttemptRef.current = false;
-            setGameState({
-              sessionId: data.sessionId,
-              gameType: data.gameType,
-              phase: 'LOBBY',
-              players: [],
-              activePlayerIndex: 0,
-              lastMove: null,
-              moveLog: [],
-            } as GameState);
             break;
           case 'SESSION_JOINED':
             isAutoReconnectAttemptRef.current = false;
-            setGameState({
-              sessionId: data.sessionId,
-              gameType: data.gameType,
-              phase: 'LOBBY',
-              players: [],
-              activePlayerIndex: 0,
-              lastMove: null,
-              moveLog: [],
-            } as GameState);
             // If we have a pending lobby join from auto-reconnect, send it now
             if (pendingLobbyJoinRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
               const { id, name } = pendingLobbyJoinRef.current;
@@ -220,11 +202,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const sendAction = useCallback((action: any) => {
     const msg = {
       type: 'GAME_ACTION',
-      actorId: myPlayerId,
       ...action,
     };
     sendMessage(msg);
-  }, [myPlayerId, sendMessage]);
+  }, [sendMessage]);
 
   const clearSession = useCallback(() => {
     // Cancel any pending reconnect
