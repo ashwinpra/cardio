@@ -24,4 +24,5 @@ export interface BaseGameState {
   activePlayerIndex: number;
   lastMove: Move | null;
   moveLog: Move[];
+  winner?: string | null;
 }
