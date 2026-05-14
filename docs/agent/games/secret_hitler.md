@@ -72,3 +72,10 @@ If modifying role-reveal logic, update `sanitizeStateForPlayer()` in `server/ind
 
 - Liberals: enact 5 liberal policies OR assassinate Hitler.
 - Fascists: enact 6 fascist policies OR elect Hitler as Chancellor after ≥ 3 fascist policies.
+
+---
+
+## Implementation Notes
+
+- **Executive Actions**: All executive actions (`POLICY_PEEK`, `INVESTIGATE`, `SPECIAL_ELECTION`, `EXECUTE`) are fully implemented and integrated with the state tree.
+- **Immutability & Testing**: The handler functions use pure immutable state transitions. Full server integration test coverage is present for voting edge cases, executive actions, and the Fascist win condition where Hitler is elected.

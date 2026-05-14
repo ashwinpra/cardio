@@ -62,6 +62,7 @@ Other players' unrevealed influences shown as `{ role: 'HIDDEN', isRevealed: fal
 
 ## Handler Notes
 
-- `server/games/coup.ts` receives `broadcastState` and may call it during multi-step resolution (challenges, blocks).
-- The `broadcastState` parameter is `(sessionId: string) => void` — pass `currentSessionId` when calling.
-- Coup has complex async resolution; state transitions span multiple round-trips.
+- State updates are strictly immutable. Functions return a new `{ state: nextState }` without modifying the previous object.
+- `server/games/coup.ts` receives `broadcastState` and a `dispatch` function.
+- `dispatch` is used for timer-based resolutions. Instead of mutating a stale reference in a `setTimeout`, timers dispatch a `TIMER_RESOLVE` action back to the handler, ensuring clean evaluation against the latest immutable state tree.
+- Complex async resolutions (Steal -> Block -> Challenge Block) are fully tested in server integration tests.

@@ -119,8 +119,8 @@ Per-game detail in [`docs/agent/games/`](./docs/agent/games/).
 - **Immutability**: State mutations must return new objects. Spread operators, not direct mutation.
 - **Types**: Game-specific types extend `BaseGameState`. Don't add game-specific fields to `src/shared/types.ts`.
 - **Error returns**: Handler functions return `{ state }` on success, `{ error: string }` on failure.
-- **Handler signature**: `handleAction(state, data, broadcastState?)` — `broadcastState` is passed for games that need async/deferred broadcasts (Coup, Hanabi, Love Letter, Spades).
-- **Tests**: Logic-layer functions are pure and ideal for unit tests. Run `npm test` after any logic change.
+- **Handler signature**: `handleAction(state, data, broadcastState?, dispatch?)` — `broadcastState` is passed for games that need async/deferred broadcasts (Hanabi, Love Letter, Spades). `dispatch` is passed for timer-based actions (like Coup) to maintain pure immutability while allowing timeouts to dispatch events.
+- **Tests**: Logic-layer functions are pure and ideal for unit tests. Run `npm test` after any logic change. Coup and Secret Hitler now have full testing and complete immutability.
 
 ---
 

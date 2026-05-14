@@ -100,29 +100,29 @@ export function getAlivePlayers(players: Player[]): Player[] {
 // Basic action processing (Income, Foreign Aid, Coup)
 // Character actions (Tax, Assassinate, Steal, Exchange) will initially mark a 'pending' state
 export function handleBasicAction(state: GameState, actorId: string, type: any, targetId?: string): GameState {
-  const newState = { ...state };
-  const actor = newState.players.find(p => p.id === actorId);
+  const actor = state.players.find(p => p.id === actorId);
   if (!actor) return state;
 
   let details = '';
   let success = true;
   const actionLabel = formatActionName(type);
+  let coinsChange = 0;
 
-  switch (type) {
-    case 'INCOME':
-      actor.coins += 1;
-      details = `${actor.name} took ${actionLabel} (+1)`;
-      break;
-    case 'FOREIGN_AID':
-      actor.coins += 2;
-      details = `${actor.name} took ${actionLabel} (+2)`;
-      break;
-    case 'COUP':
-      if (actor.coins < 7) return state;
-      actor.coins -= 7;
-      details = `${actor.name} performed a ${actionLabel} on ${newState.players.find(p => p.id === targetId)?.name}`;
-      break;
+  if (type === 'INCOME') {
+    coinsChange = 1;
+    details = `${actor.name} took ${actionLabel} (+1)`;
+  } else if (type === 'FOREIGN_AID') {
+    coinsChange = 2;
+    details = `${actor.name} took ${actionLabel} (+2)`;
+  } else if (type === 'COUP') {
+    if (actor.coins < 7) return state;
+    coinsChange = -7;
+    details = `${actor.name} performed a ${actionLabel} on ${state.players.find(p => p.id === targetId)?.name}`;
   }
+
+  const players = state.players.map(p => 
+    p.id === actorId ? { ...p, coins: p.coins + coinsChange } : p
+  );
 
   const move: Move = {
     type,
@@ -133,20 +133,30 @@ export function handleBasicAction(state: GameState, actorId: string, type: any, 
     targetId
   };
 
-  newState.lastMove = move;
-  newState.moveLog = [move, ...state.moveLog];
+  let activePlayerIndex = state.activePlayerIndex;
+  let phase = state.phase;
+  let loserId = state.loserId;
+  let resolution = state.resolution;
 
   if (type === 'INCOME') {
-    newState.activePlayerIndex = (state.activePlayerIndex + 1) % state.players.length;
-    // Skip dead players
-    while (!newState.players[newState.activePlayerIndex].influences?.some(i => !i.isRevealed)) {
-      newState.activePlayerIndex = (newState.activePlayerIndex + 1) % state.players.length;
+    activePlayerIndex = (activePlayerIndex + 1) % players.length;
+    while (!players[activePlayerIndex].influences?.some(i => !i.isRevealed)) {
+      activePlayerIndex = (activePlayerIndex + 1) % players.length;
     }
   } else if (type === 'COUP') {
-    newState.phase = 'SELECT_INFLUENCE_TO_LOSE';
-    newState.loserId = targetId;
-    newState.resolution = 'ACTION_COMPLETE';
+    phase = 'SELECT_INFLUENCE_TO_LOSE';
+    loserId = targetId;
+    resolution = 'ACTION_COMPLETE';
   }
 
-  return newState;
+  return {
+    ...state,
+    players,
+    lastMove: move,
+    moveLog: [move, ...state.moveLog],
+    activePlayerIndex,
+    phase,
+    loserId,
+    resolution,
+  };
 }
