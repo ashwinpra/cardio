@@ -423,60 +423,52 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        case 'START_GAME': {
-          if (!session || !currentSessionId) break;
-
-          // Only the host can start the game
-          if (session.hostPlayerId && myPlayerId !== session.hostPlayerId) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can start the game.' }));
-            break;
-          }
-
-        const dispatch = (actionData: any, sendError: boolean = false) => {
-          if (!session || !currentSessionId) return;
-          let result: { state?: any; error?: string } = {};
-
-          if (session.gameType === 'LITERATURE') {
-            result = LiteratureHandler.handleAction(session.state, actionData);
-          } else if (session.gameType === 'COUP') {
-            result = CoupHandler.handleAction(session.state, actionData, broadcastState, dispatch);
-          } else if (session.gameType === 'SECRET_HITLER') {
-            result = SecretHitlerHandler.handleAction(session.state, actionData);
-          } else if (session.gameType === 'HANABI') {
-            result = HanabiHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'LOVE_LETTER') {
-            result = LoveLetterHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'SPADES') {
-            result = SpadesHandler.handleAction(session.state, actionData, broadcastState);
-          }
-
-          if (result.error && sendError) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
-          } else if (result.state) {
-            session.state = result.state;
-            broadcastState(currentSessionId);
-          }
-        };
-
-        case 'START_GAME': {
-          if (!session || !currentSessionId) break;
-          if (session.hostPlayerId && myPlayerId !== session.hostPlayerId) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can start the game.' }));
-            break;
-          }
-          dispatch({ ...data, actorId: myPlayerId }, true);
-          break;
-        }
-
+        case 'START_GAME':
         case 'ASK_CARD':
         case 'CLAIM_BOOK':
         case 'COUP_ACTION':
         case 'SECRET_HITLER_ACTION':
         case 'GAME_ACTION': {
           if (!session || !currentSessionId) break;
+
+          const dispatch = (actionData: any, sendError: boolean = false) => {
+            if (!session || !currentSessionId) return;
+            let result: { state?: any; error?: string } = {};
+
+            if (session.gameType === 'LITERATURE') {
+              result = LiteratureHandler.handleAction(session.state as any, actionData);
+            } else if (session.gameType === 'COUP') {
+              result = CoupHandler.handleAction(session.state as any, actionData, broadcastState, dispatch);
+            } else if (session.gameType === 'SECRET_HITLER') {
+              result = SecretHitlerHandler.handleAction(session.state as any, actionData);
+            } else if (session.gameType === 'HANABI') {
+              result = HanabiHandler.handleAction(session.state as any, actionData, broadcastState);
+            } else if (session.gameType === 'LOVE_LETTER') {
+              result = LoveLetterHandler.handleAction(session.state as any, actionData, broadcastState);
+            } else if (session.gameType === 'SPADES') {
+              result = SpadesHandler.handleAction(session.state as any, actionData, broadcastState);
+            }
+
+            if (result.error && sendError) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
+            } else if (result.state) {
+              session.state = result.state;
+              broadcastState(currentSessionId);
+            }
+          };
+
+          if (data.type === 'START_GAME') {
+            if (session.hostPlayerId && myPlayerId !== session.hostPlayerId) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can start the game.' }));
+              break;
+            }
+          }
+
           dispatch({ ...data, actorId: myPlayerId }, true);
           break;
         }
+
+
       }
     } catch (e) {
       console.error('Message error:', e);
