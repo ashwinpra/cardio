@@ -7,6 +7,7 @@ import SecretHitlerBoard from './games/secretHitler/Board';
 import HanabiBoard from './games/hanabi/Board';
 import LoveLetterBoard from './games/love_letter/Board';
 import SpadesBoard from './games/spades/Board';
+import HostControls from './components/HostControls';
 
 function App() {
   const { gameState, error, connectionStatus } = useGame();
@@ -51,6 +52,9 @@ function App() {
       ) : (
         renderBoard()
       )}
+
+      {/* Host Controls */}
+      {gameState && <HostControls />}
     </>
   );
 }

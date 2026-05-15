@@ -107,7 +107,7 @@ export default function HanabiBoard() {
         <section className="grid grid-cols-5 gap-2 md:gap-4 flex-grow">
           {COLORS.map(color => {
              const conf = colorConfig[color];
-             const val = state.playArea?.[color] || 0;
+             const val = state.playArea?.[color as Exclude<HanabiColor, 'HIDDEN'>] || 0;
              return (
                <div key={color} className={`bg-surface-container-lowest rounded-xl border border-outline-variant h-32 md:h-64 flex flex-col items-center justify-end p-2 relative overflow-hidden group shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]`}>
                  <div className={`absolute inset-0 ${conf.bgLow} opacity-50`}></div>

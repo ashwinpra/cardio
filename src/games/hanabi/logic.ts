@@ -52,7 +52,7 @@ export function setupHanabi(state: GameState): GameState {
     ...state,
     players,
     deck,
-    playArea: { RED: 0, BLUE: 0, GREEN: 0, YELLOW: 0, WHITE: 0, HIDDEN: 0 },
+    playArea: { RED: 0, BLUE: 0, GREEN: 0, YELLOW: 0, WHITE: 0 } as any,
     discardPile: [],
     hintTokens: 8,
     mistakeTokens: 0,
@@ -118,7 +118,7 @@ export function playCard(state: GameState, playerId: string, cardIndex: number):
   if (!player || cardIndex < 0 || cardIndex >= player.hand.length) return { error: 'Invalid card index' };
 
   const card = player.hand[cardIndex];
-  const nextRank = (state.playArea[card.color] as number) + 1;
+  const nextRank = (state.playArea[card.color as Exclude<HanabiColor, 'HIDDEN'>] as number) + 1;
 
   let newState = { ...state };
   const newHand = [...player.hand];

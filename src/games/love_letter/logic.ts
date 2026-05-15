@@ -88,7 +88,6 @@ export function playCard(
   const handIndex = player.hand.findIndex(c => c.role === cardRole);
   if (handIndex === -1) return { error: 'Card not in hand' };
 
-  const otherCard = player.hand[handIndex === 0 ? 1 : 0];
 
   // Countess restriction: If you have the Countess and the King or Prince, you must play the Countess.
   if (cardRole !== 'COUNTESS' && player.hand.some(c => c.role === 'COUNTESS') && (cardRole === 'KING' || cardRole === 'PRINCE')) {

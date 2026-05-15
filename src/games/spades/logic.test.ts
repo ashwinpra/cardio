@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { setupSpades, placeBid, playCard } from './logic';
-import type { GameState, Player, Card } from './types';
+import type { GameState, Player } from './types';
 
 function makePlayer(id: string, name: string): Player {
-  return { id, name, hand: [], bid: null, tricksTaken: 0, bags: 0, isConnected: true, team: 'TEAM_A' };
+  return { id, name, hand: [], bid: null, tricksTaken: 0, bags: 0, isConnected: true, team: 'TEAM_A', seatIndex: 0 };
 }
 
 function makeState(players: Player[]): GameState {

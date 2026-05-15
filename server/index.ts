@@ -4,6 +4,7 @@ import http from 'http';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import * as db from './db.js';
 import * as LiteratureHandler from './games/literature.js';
 import * as CoupHandler from './games/coup.js';
 import * as SecretHitlerHandler from './games/secretHitler.js';
@@ -59,12 +60,31 @@ interface Session {
   gameType: GameType;
   hostPlayerId: string | null; // first player to join is host
   cleanupTimer: ReturnType<typeof setTimeout> | null;
+  lastActionTimestamp: number;
 }
 
 // Track which WS is alive for heartbeat
 const wsAliveMap = new WeakMap<WebSocket, boolean>();
 
 const sessions: Record<string, Session> = {};
+
+// Load persisted sessions on startup
+const activeSessions = db.getAllSessions();
+for (const s of activeSessions) {
+  const state = s.state;
+  if (state.players) {
+    state.players.forEach((p: any) => p.isConnected = false);
+  }
+  sessions[s.id] = {
+    clients: new Map(),
+    state: state,
+    gameType: s.gameType as GameType,
+    hostPlayerId: s.hostPlayerId,
+    cleanupTimer: null,
+    lastActionTimestamp: Date.now()
+  };
+}
+console.log(`Loaded ${activeSessions.length} active sessions from DB.`);
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -82,6 +102,8 @@ function broadcastState(sessionId: string) {
   const session = sessions[sessionId];
   if (!session) return;
   
+  db.saveSession(sessionId, session.gameType, session.state, session.hostPlayerId);
+
   for (const [client, playerId] of session.clients.entries()) {
     if (client.readyState === WebSocket.OPEN) {
       const sanitized = sanitizeStateForPlayer(session.state, playerId);
@@ -358,6 +380,29 @@ wss.on('close', () => clearInterval(heartbeatInterval));
 const RATE_LIMIT_WINDOW_MS = 1000;
 const MAX_MESSAGES_PER_WINDOW = 20;
 
+// ─── Inactivity Timeout System ───────────────────────────
+const INACTIVITY_TIMEOUT_MS = 60_000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [sid, session] of Object.entries(sessions)) {
+    if (session.state.phase !== 'PLAYING') continue;
+    if (!('activePlayerIndex' in session.state)) continue;
+    if (session.clients.size === 0) continue;
+
+    const activeIdx = (session.state as any).activePlayerIndex;
+    if (activeIdx == null || !session.state.players[activeIdx]) continue;
+
+    const lastAction = session.lastActionTimestamp || now;
+    if (now - lastAction > INACTIVITY_TIMEOUT_MS) {
+      (session.state as any).activePlayerIndex = (activeIdx + 1) % session.state.players.length;
+      session.state.moveLog = session.state.moveLog || [];
+      session.state.moveLog.push({ actorId: 'SYSTEM', description: `Turn auto-skipped due to inactivity.` });
+      session.lastActionTimestamp = now;
+      broadcastState(sid);
+    }
+  }
+}, 5000);
+
 export { sanitizeStateForPlayer }; // Export for testing
 
 wss.on('connection', (ws) => {
@@ -402,6 +447,7 @@ wss.on('connection', (ws) => {
             gameType,
             hostPlayerId: null,
             cleanupTimer: null,
+            lastActionTimestamp: Date.now()
           };
           currentSessionId = sessionId;
           ws.send(JSON.stringify({ type: 'SESSION_CREATED', sessionId, gameType }));
@@ -412,8 +458,24 @@ wss.on('connection', (ws) => {
         case 'JOIN_SESSION': {
           const sid = data.sessionId as string;
           if (!sessions[sid]) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: 'Session not found' }));
-            break;
+            const persisted = db.loadSession(sid);
+            if (persisted) {
+              const state = persisted.state;
+              if (state.players) {
+                state.players.forEach((p: any) => p.isConnected = false);
+              }
+              sessions[sid] = {
+                clients: new Map(),
+                state: state,
+                gameType: persisted.gameType as GameType,
+                hostPlayerId: persisted.hostPlayerId,
+                cleanupTimer: null,
+                lastActionTimestamp: Date.now()
+              };
+            } else {
+              ws.send(JSON.stringify({ type: 'ERROR', message: 'Session not found' }));
+              break;
+            }
           }
 
           // Cancel any pending cleanup if someone is reconnecting
@@ -544,6 +606,7 @@ wss.on('connection', (ws) => {
               ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
             } else if (result.state) {
               liveSession.state = result.state;
+              liveSession.lastActionTimestamp = Date.now();
               if (liveSession.state.moveLog && liveSession.state.moveLog.length > 50) {
                 liveSession.state.moveLog = liveSession.state.moveLog.slice(-50);
               }
@@ -559,6 +622,63 @@ wss.on('connection', (ws) => {
           }
 
           dispatch({ ...data, actorId: myPlayerId }, true);
+          break;
+        }
+
+        case 'HOST_ACTION': {
+          if (!session || !currentSessionId) break;
+          if (myPlayerId !== session.hostPlayerId) {
+            ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can perform administrative actions.' }));
+            break;
+          }
+
+          const action = data.action;
+          if (action === 'END_GAME') {
+            db.deleteSession(currentSessionId);
+            for (const clientWs of session.clients.keys()) {
+              clientWs.send(JSON.stringify({ type: 'ERROR', message: 'The host has ended the game.' }));
+              clientWs.close(1000, 'Game ended by host');
+            }
+            delete sessions[currentSessionId];
+          } else if (action === 'KICK_PLAYER') {
+            const targetId = data.targetId;
+            session.state.players = session.state.players.filter((p: any) => p.id !== targetId);
+            
+            // Disconnect the kicked player
+            for (const [clientWs, pid] of session.clients.entries()) {
+              if (pid === targetId) {
+                clientWs.send(JSON.stringify({ type: 'ERROR', message: 'You have been kicked by the host.' }));
+                clientWs.close(1000, 'Kicked by host');
+                session.clients.delete(clientWs);
+              }
+            }
+            // Add a log entry
+            session.state.moveLog = session.state.moveLog || [];
+            session.state.moveLog.push({ actorId: 'HOST', description: `Host kicked a player` });
+            broadcastState(currentSessionId);
+          } else if (action === 'FORCE_SKIP') {
+            if ('activePlayerIndex' in session.state && session.state.players.length > 0) {
+              const currentIdx = session.state.activePlayerIndex;
+              session.state.activePlayerIndex = (currentIdx + 1) % session.state.players.length;
+              session.state.moveLog = session.state.moveLog || [];
+              session.state.moveLog.push({ actorId: 'HOST', description: 'Host forced turn skip' });
+              broadcastState(currentSessionId);
+            }
+          } else if (action === 'REASSIGN_SEAT') {
+            const oldPlayerId = data.targetId;
+            const newPlayerId = data.newPlayerId;
+            // Simple generic reassignment for generic references.
+            // Note: Deep replacement in hands/roles may be needed for complex games.
+            let stateStr = JSON.stringify(session.state);
+            // Only replace exact ID matches to avoid replacing partial strings
+            // This is a naive but effective approach for all games.
+            stateStr = stateStr.replace(new RegExp(`"${oldPlayerId}"`, 'g'), `"${newPlayerId}"`);
+            session.state = JSON.parse(stateStr);
+            
+            session.state.moveLog = session.state.moveLog || [];
+            session.state.moveLog.push({ actorId: 'HOST', description: `Host reassigned a seat` });
+            broadcastState(currentSessionId);
+          }
           break;
         }
 
@@ -589,7 +709,7 @@ wss.on('connection', (ws) => {
         const sid = currentSessionId;
         session.cleanupTimer = setTimeout(() => {
           if (sessions[sid] && sessions[sid].clients.size === 0) {
-            console.log(`Cleaning up abandoned session ${sid}`);
+            console.log(`Unloading idle session ${sid} from memory (persisted to DB)`);
             delete sessions[sid];
           }
         }, SESSION_CLEANUP_DELAY_MS);
