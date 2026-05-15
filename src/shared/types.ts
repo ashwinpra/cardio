@@ -1,11 +1,17 @@
-export type GameType = 'LITERATURE' | 'COUP' | 'SECRET_HITLER' | 'HANABI' | 'LOVE_LETTER' | 'SPADES';
+export type GameType =
+  | "LITERATURE"
+  | "COUP"
+  | "SECRET_HITLER"
+  | "HANABI"
+  | "LOVE_LETTER"
+  | "SPADES";
 
 export interface Player {
   id: string;
   name: string;
   seatIndex: number;
   isConnected: boolean;
-  team: 'TEAM_A' | 'TEAM_B';
+  team: "TEAM_A" | "TEAM_B";
 }
 
 export interface Move {
@@ -24,5 +30,6 @@ export interface BaseGameState {
   activePlayerIndex: number;
   lastMove: Move | null;
   moveLog: Move[];
+  hostPlayerId?: string | null;
   winner?: string | null;
 }

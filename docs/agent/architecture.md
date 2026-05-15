@@ -1,6 +1,6 @@
 # Architecture Reference
 
-Deep-dive on the server internals, WebSocket protocol, and shared systems. Read CLAUDE.md first for orientation.
+Deep-dive on the server internals, WebSocket protocol, and shared systems. Read AGENTS.md first for orientation.
 
 ---
 
@@ -10,10 +10,10 @@ Deep-dive on the server internals, WebSocket protocol, and shared systems. Read 
 
 ```typescript
 interface Session {
-  clients: Map<WebSocket, string>;  // ws → playerId
-  state: GameState;                  // authoritative state (any shape)
+  clients: Map<WebSocket, string>; // ws → playerId
+  state: GameState; // authoritative state (any shape)
   gameType: GameType;
-  hostPlayerId: string | null;       // first player to JOIN_LOBBY
+  hostPlayerId: string | null; // first player to JOIN_LOBBY
   cleanupTimer: ReturnType<typeof setTimeout> | null;
 }
 ```
@@ -48,26 +48,26 @@ LITERATURE: 8 | COUP: 6 | SECRET_HITLER: 10 | HANABI: 5 | LOVE_LETTER: 4 | SPADE
 
 ### Client → Server
 
-| Type | Payload | Notes |
-|------|---------|-------|
-| `CREATE_SESSION` | `{gameType}` | Server responds with `SESSION_CREATED` |
-| `JOIN_SESSION` | `{sessionId}` | Server responds with `SESSION_JOINED` + broadcasts state |
-| `JOIN_LOBBY` | `{player: {id, name, team?, seatIndex?}}` | Adds or reconnects player |
-| `START_GAME` | `{}` | Host only; delegates to game handler |
-| `ASK_CARD` | `{askerId, targetId, card}` | Literature only |
-| `CLAIM_BOOK` | `{claimerId, halfSuit}` | Literature only |
-| `COUP_ACTION` | varies | Coup-specific |
-| `SECRET_HITLER_ACTION` | varies | Secret Hitler-specific |
-| `GAME_ACTION` | `{actorId, ...}` | Generic action for all games |
+| Type                   | Payload                                   | Notes                                                                      |
+| ---------------------- | ----------------------------------------- | -------------------------------------------------------------------------- |
+| `CREATE_SESSION`       | `{gameType}`                              | Server responds with `SESSION_CREATED`                                     |
+| `JOIN_SESSION`         | `{sessionId}`                             | Server responds with `SESSION_JOINED` + broadcasts state                   |
+| `JOIN_LOBBY`           | `{player: {id, name, team?, seatIndex?}}` | Adds or reconnects player                                                  |
+| `START_GAME`           | `{}`                                      | Host only; delegates to game handler                                       |
+| `ASK_CARD`             | `{askerId, targetId, card}`               | Literature only (server trusts socket-bound actor identity, not askerId)   |
+| `CLAIM_BOOK`           | `{claimerId, halfSuit}`                   | Literature only (server trusts socket-bound actor identity, not claimerId) |
+| `COUP_ACTION`          | varies                                    | Coup-specific                                                              |
+| `SECRET_HITLER_ACTION` | varies                                    | Secret Hitler-specific                                                     |
+| `GAME_ACTION`          | `{actorId, ...}`                          | Generic action for all games                                               |
 
 ### Server → Client
 
-| Type | Payload |
-|------|---------|
-| `SESSION_CREATED` | `{sessionId, gameType}` |
-| `SESSION_JOINED` | `{sessionId, gameType}` |
-| `STATE_UPDATE` | `{state (sanitized), yourPlayerId, gameType}` |
-| `ERROR` | `{message}` |
+| Type              | Payload                                                      |
+| ----------------- | ------------------------------------------------------------ |
+| `SESSION_CREATED` | `{sessionId, gameType}`                                      |
+| `SESSION_JOINED`  | `{sessionId, gameType}`                                      |
+| `STATE_UPDATE`    | `{state (sanitized + hostPlayerId), yourPlayerId, gameType}` |
+| `ERROR`           | `{message}`                                                  |
 
 `actorId: myPlayerId` is injected by `server/index.ts` before dispatching to every handler.
 
@@ -77,12 +77,14 @@ LITERATURE: 8 | COUP: 6 | SECRET_HITLER: 10 | HANABI: 5 | LOVE_LETTER: 4 | SPADE
 
 `sanitizeStateForPlayer(state, playerId)` in `server/index.ts` runs before every `STATE_UPDATE` send.
 
-| Game | What is hidden |
-|------|---------------|
-| Literature | All other players' hands; exposes `cardCounts: Record<string, number>` at top level |
-| Coup | Other players' unrevealed influences shown as `{role: 'HIDDEN', isRevealed: false}` |
+| Game          | What is hidden                                                                                                                                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Literature    | All other players' hands; exposes `cardCounts: Record<string, number>` at top level                                                                                                                                         |
+| Coup          | Other players' unrevealed influences shown as `{role: 'HIDDEN', isRevealed: false}`                                                                                                                                         |
 | Secret Hitler | Roles/party hidden except for: self always visible; Fascists see each other + Hitler; Hitler sees Fascists; `presidentCards`/`chancellorCards` shown only to active role; `policyPeek` shown only during POLICY_PEEK action |
-| Hanabi, Love Letter, Spades | No sanitization (pass-through) |
+| Hanabi        | Own hand rank/color hidden from self; hint metadata preserved                                                                                                                                                               |
+| Love Letter   | Deck hidden, opponent hands hidden, priest peeks filtered to viewer                                                                                                                                                         |
+| Spades        | Deck hidden and all opponent hands hidden                                                                                                                                                                                   |
 
 When adding private state to a game, add a branch in `sanitizeStateForPlayer`.
 
@@ -96,8 +98,8 @@ Every game handler in `server/games/` exports:
 export function handleAction(
   state: GameState,
   data: ActionData,
-  broadcastState?: (sessionId: string) => void  // optional, for async mid-action broadcasts
-): { state?: GameState; error?: string }
+  broadcastState?: (sessionId: string) => void, // optional, for async mid-action broadcasts
+): { state?: GameState; error?: string };
 ```
 
 - Return `{ error }` to send an `ERROR` message to the client; state is unchanged.
@@ -128,17 +130,17 @@ Game-specific fields are added on top. If you add new required fields to a game'
 
 **Exposed API (via `useGame()`):**
 
-| Property/Method | Purpose |
-|----------------|---------|
-| `gameState` | Sanitized state from last `STATE_UPDATE` |
-| `myPlayerId` | This client's player ID |
-| `cardCounts` | Literature card counts (set from `state.cardCounts`) |
-| `connectionStatus` | `'connected' \| 'disconnected' \| 'reconnecting'` |
-| `createLANSession(gameType)` | Opens WS + sends `CREATE_SESSION` |
-| `connectToLAN(sessionId)` | Opens WS + sends `JOIN_SESSION` |
-| `sendMessage(msg)` | Send any message; queues if not connected |
-| `sendAction(action)` | Wraps action in `{type: 'GAME_ACTION', actorId, ...action}` |
-| `clearSession()` | Clears localStorage + closes WS intentionally |
+| Property/Method              | Purpose                                                     |
+| ---------------------------- | ----------------------------------------------------------- |
+| `gameState`                  | Sanitized state from last `STATE_UPDATE`                    |
+| `myPlayerId`                 | This client's player ID                                     |
+| `cardCounts`                 | Literature card counts (set from `state.cardCounts`)        |
+| `connectionStatus`           | `'connected' \| 'disconnected' \| 'reconnecting'`           |
+| `createLANSession(gameType)` | Opens WS + sends `CREATE_SESSION`                           |
+| `connectToLAN(sessionId)`    | Opens WS + sends `JOIN_SESSION`                             |
+| `sendMessage(msg)`           | Send any message; queues if not connected                   |
+| `sendAction(action)`         | Wraps action in `{type: 'GAME_ACTION', actorId, ...action}` |
+| `clearSession()`             | Clears localStorage + closes WS intentionally               |
 
 `state` and `playerId` are aliases for `gameState` and `myPlayerId` (backward compat).
 
@@ -161,11 +163,38 @@ Boards: `LiteratureBoard | CoupBoard | SecretHitlerBoard | HanabiBoard | LoveLet
 ## Shared Base Types (`src/shared/types.ts`)
 
 ```typescript
-type GameType = 'LITERATURE' | 'COUP' | 'SECRET_HITLER' | 'HANABI' | 'LOVE_LETTER' | 'SPADES';
+type GameType =
+  | "LITERATURE"
+  | "COUP"
+  | "SECRET_HITLER"
+  | "HANABI"
+  | "LOVE_LETTER"
+  | "SPADES";
 
-interface Player { id, name, seatIndex, isConnected, team: 'TEAM_A' | 'TEAM_B' }
-interface Move { type, timestamp (ISO), playerName, details, success }
-interface BaseGameState { sessionId, gameType, phase, players, activePlayerIndex, lastMove, moveLog, winner? }
+interface Player {
+  id;
+  name;
+  seatIndex;
+  isConnected;
+  team: "TEAM_A" | "TEAM_B";
+}
+interface Move {
+  type;
+  timestamp(ISO);
+  playerName;
+  details;
+  success;
+}
+interface BaseGameState {
+  sessionId;
+  gameType;
+  phase;
+  players;
+  activePlayerIndex;
+  lastMove;
+  moveLog;
+  winner?;
+}
 ```
 
 **Rule:** Do not add game-specific fields to `BaseGameState` or `Player`. Extend in each game's own `types.ts`.
@@ -193,6 +222,7 @@ interface BaseGameState { sessionId, gameType, phase, players, activePlayerIndex
 ## Testing
 
 Tests live co-located with the modules they test:
+
 - `src/games/*/logic.test.ts` — Pure game logic unit tests (e.g., Literature: 47, Coup: 11, Secret Hitler: 12)
 - `server/games/*.test.ts` — Server handler integration tests (e.g., Literature: 12, Secret Hitler: 8)
 - `server/index.test.ts` — Server core logic (Sanitization)
