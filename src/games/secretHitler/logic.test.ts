@@ -149,6 +149,8 @@ describe('Secret Hitler Logic Tests', () => {
       const state = setupSecretHitler(makeLobbyState(players));
       state.presidentId = 'p1';
       // p2 is LIBERAL
+      state.players[1].role = "LIBERAL";
+      state.players[1].partyMembership = "LIBERAL";
       const next = handleExecute(state, 'p2');
       expect(next.players.find(p => p.id === 'p2')?.isAlive).toBe(false);
       expect(next.phase).toBe('NOMINATE_CHANCELLOR');
