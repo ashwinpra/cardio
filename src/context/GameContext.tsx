@@ -34,6 +34,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
 
   const wsRef = useRef<WebSocket | null>(null);
+  const pendingLobbyJoinRef = useRef<{ id: string; name: string } | null>(null);
   const isAutoReconnectAttemptRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,9 +66,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
-    const isLocalhost = host === 'localhost' || host === '127.0.0.1';
-    const port = isLocalhost ? '3001' : window.location.port;
-    const url = `${protocol}//${host}${port ? `:${port}` : ''}`;
+    const port = window.location.port;
+    const url = `${protocol}//${host}${port ? `:${port}` : ''}/ws`;
     const socket = new WebSocket(url);
 
     socket.onopen = () => {
@@ -111,6 +111,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               lastMove: null,
               moveLog: [],
             } as GameState);
+            // If we have a pending lobby join from auto-reconnect, send it now
+            if (pendingLobbyJoinRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+              const { id, name } = pendingLobbyJoinRef.current;
+              pendingLobbyJoinRef.current = null;
+              wsRef.current.send(JSON.stringify({
+                type: 'JOIN_LOBBY',
+                player: { id, name }
+              }));
+            }
             break;
           case 'STATE_UPDATE':
             isAutoReconnectAttemptRef.current = false;
@@ -306,3 +315,4 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useGame = () => useContext(GameContext);
+

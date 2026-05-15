@@ -9,7 +9,9 @@
     "start": "npm run build && tsx server/index.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "kill-ports": "bash scripts/kill-ports.sh"
+    "kill-ports": "bash scripts/kill-ports.sh",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -35,6 +37,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "typescript-eslint": "^8.57.0"
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.1.6"
   }
 }

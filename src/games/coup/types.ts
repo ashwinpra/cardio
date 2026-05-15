@@ -59,4 +59,7 @@ export interface GameState extends BaseGameState {
     } | null;
   } | null;
   exchangeOptions?: CoupRole[];
+  loserId?: string;
+  resolution?: string;
+  winner?: string;
 }
