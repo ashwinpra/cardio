@@ -273,3 +273,54 @@ export function hitlerElectedAsChancellor(state: SecretHitlerState): boolean {
 export function getAliveCount(state: SecretHitlerState): number {
   return getAlivePlayers(state).length;
 }
+
+export function handleInvestigate(state: SecretHitlerState, presidentId: string, targetId: string): { state: SecretHitlerState, error?: string } {
+  const target = state.players.find((p) => p.id === targetId);
+  const party = target?.partyMembership;
+  if (!target || !party) return { state, error: 'Target does not have a valid membership card.' };
+  return {
+    state: moveToNextGovernment({
+      ...state,
+      executiveAction: null,
+      investigateResults: {
+        ...state.investigateResults,
+        [presidentId]: { targetName: target.name, party },
+      },
+    }),
+  };
+}
+
+export function handleSpecialElection(state: SecretHitlerState, targetId: string): SecretHitlerState {
+  const currentPresidentIndex = state.presidentId
+    ? getPlayerIndex(state.players, state.presidentId)
+    : 0;
+  return {
+    ...state,
+    executiveAction: null,
+    presidentId: targetId,
+    nominatedChancellorId: null,
+    votes: {},
+    phase: 'NOMINATE_CHANCELLOR',
+    specialElectionReturnIndex: currentPresidentIndex,
+  };
+}
+
+export function handleExecute(state: SecretHitlerState, targetId: string): SecretHitlerState {
+  const players = state.players.map((p) => (p.id === targetId ? { ...p, isAlive: false } : p));
+  const target = players.find((p) => p.id === targetId);
+  if (target?.role === 'HITLER') {
+    return {
+      ...state,
+      players,
+      phase: 'GAME_OVER',
+      winner: 'LIBERAL',
+      winnerReason: 'Hitler was executed.',
+      executiveAction: null,
+    };
+  }
+  return moveToNextGovernment({
+    ...state,
+    players,
+    executiveAction: null,
+  });
+}

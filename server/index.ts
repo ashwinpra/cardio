@@ -10,7 +10,12 @@ import * as SecretHitlerHandler from './games/secretHitler.js';
 import * as HanabiHandler from './games/hanabi.js';
 import * as LoveLetterHandler from './games/love_letter.js';
 import * as SpadesHandler from './games/spades.js';
-import type { BaseGameState as GameState, GameType } from '../src/shared/types.js';
+import type { GameState as LiteratureState } from '../src/games/literature/types.js';
+import type { GameState as CoupState } from '../src/games/coup/types.js';
+import type { SecretHitlerState } from '../src/games/secretHitler/types.js';
+import type { BaseGameState, GameType } from '../src/shared/types.js';
+
+type GameStateUnion = LiteratureState | CoupState | SecretHitlerState | BaseGameState;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,7 +52,7 @@ const MAX_PLAYERS: Record<string, number> = {
 // ─── Types ───────────────────────────────────────────────
 interface Session {
   clients: Map<WebSocket, string>; // ws -> playerId
-  state: GameState;
+  state: GameStateUnion;
   gameType: GameType;
   hostPlayerId: string | null; // first player to join is host
   cleanupTimer: ReturnType<typeof setTimeout> | null;
@@ -116,7 +121,7 @@ function pruneDeadClients(session: Session) {
   }
 }
 
-function sanitizeStateForPlayer(state: any, playerId: string): any {
+function sanitizeStateForPlayer(state: GameStateUnion, playerId: string): GameStateUnion {
   if (state.gameType === 'LITERATURE') {
     const cardCounts: Record<string, number> = {};
     for (const [id, hand] of Object.entries(state.hands || {})) {
@@ -177,7 +182,7 @@ function sanitizeStateForPlayer(state: any, playerId: string): any {
   return state;
 }
 
-function createEmptyState(sessionId: string, gameType: GameType): any {
+function createEmptyState(sessionId: string, gameType: GameType): GameStateUnion {
   const base = {
     sessionId,
     gameType,
@@ -418,74 +423,52 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        case 'START_GAME': {
-          if (!session || !currentSessionId) break;
-
-          // Only the host can start the game
-          if (session.hostPlayerId && myPlayerId !== session.hostPlayerId) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can start the game.' }));
-            break;
-          }
-
-          // Delegate to the appropriate game handler
-          let result: { state?: any; error?: string } = {};
-          const actionData = { ...data, actorId: myPlayerId };
-
-          if (session.gameType === 'LITERATURE') {
-            result = LiteratureHandler.handleAction(session.state, actionData);
-          } else if (session.gameType === 'COUP') {
-            result = CoupHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'SECRET_HITLER') {
-            result = SecretHitlerHandler.handleAction(session.state, actionData);
-          } else if (session.gameType === 'HANABI') {
-            result = HanabiHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'LOVE_LETTER') {
-            result = LoveLetterHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'SPADES') {
-            result = SpadesHandler.handleAction(session.state, actionData, broadcastState);
-          }
-
-          if (result.error) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
-          } else if (result.state) {
-            session.state = result.state;
-            broadcastState(currentSessionId);
-          }
-          break;
-        }
-
+        case 'START_GAME':
         case 'ASK_CARD':
         case 'CLAIM_BOOK':
         case 'COUP_ACTION':
         case 'SECRET_HITLER_ACTION':
         case 'GAME_ACTION': {
           if (!session || !currentSessionId) break;
-          
-          let result: { state?: any; error?: string } = {};
-          const actionData = { ...data, actorId: myPlayerId };
 
-          if (session.gameType === 'LITERATURE') {
-            result = LiteratureHandler.handleAction(session.state, actionData);
-          } else if (session.gameType === 'COUP') {
-            result = CoupHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'SECRET_HITLER') {
-            result = SecretHitlerHandler.handleAction(session.state, actionData);
-          } else if (session.gameType === 'HANABI') {
-            result = HanabiHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'LOVE_LETTER') {
-            result = LoveLetterHandler.handleAction(session.state, actionData, broadcastState);
-          } else if (session.gameType === 'SPADES') {
-            result = SpadesHandler.handleAction(session.state, actionData, broadcastState);
+          const dispatch = (actionData: any, sendError: boolean = false) => {
+            if (!session || !currentSessionId) return;
+            let result: { state?: any; error?: string } = {};
+
+            if (session.gameType === 'LITERATURE') {
+              result = LiteratureHandler.handleAction(session.state as any, actionData);
+            } else if (session.gameType === 'COUP') {
+              result = CoupHandler.handleAction(session.state as any, actionData, broadcastState, dispatch);
+            } else if (session.gameType === 'SECRET_HITLER') {
+              result = SecretHitlerHandler.handleAction(session.state as any, actionData);
+            } else if (session.gameType === 'HANABI') {
+              result = HanabiHandler.handleAction(session.state as any, actionData, broadcastState);
+            } else if (session.gameType === 'LOVE_LETTER') {
+              result = LoveLetterHandler.handleAction(session.state as any, actionData, broadcastState);
+            } else if (session.gameType === 'SPADES') {
+              result = SpadesHandler.handleAction(session.state as any, actionData, broadcastState);
+            }
+
+            if (result.error && sendError) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
+            } else if (result.state) {
+              session.state = result.state;
+              broadcastState(currentSessionId);
+            }
+          };
+
+          if (data.type === 'START_GAME') {
+            if (session.hostPlayerId && myPlayerId !== session.hostPlayerId) {
+              ws.send(JSON.stringify({ type: 'ERROR', message: 'Only the host can start the game.' }));
+              break;
+            }
           }
 
-          if (result.error) {
-            ws.send(JSON.stringify({ type: 'ERROR', message: result.error }));
-          } else if (result.state) {
-            session.state = result.state;
-            broadcastState(currentSessionId);
-          }
+          dispatch({ ...data, actorId: myPlayerId }, true);
           break;
         }
+
+
       }
     } catch (e) {
       console.error('Message error:', e);
