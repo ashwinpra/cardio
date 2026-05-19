@@ -1,140 +1,135 @@
-import type { GameState, Card, Suit, Rank } from './types';
+import type { GameState, Card, Suit, Rank, TeamScore, Player } from './types.js';
 
 const SUITS: Suit[] = ['SPADE', 'HEART', 'DIAMOND', 'CLUB'];
 const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const RANK_VALUES: Record<Rank, number> = {
-  '2': 2,
-  '3': 3,
-  '4': 4,
-  '5': 5,
-  '6': 6,
-  '7': 7,
-  '8': 8,
-  '9': 9,
-  '10': 10,
-  'J': 11,
-  'Q': 12,
-  'K': 13,
-  'A': 14,
+  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+  'J': 11, 'Q': 12, 'K': 13, 'A': 14,
 };
 
 export function createDeck(): Card[] {
   const deck: Card[] = [];
-
   for (const suit of SUITS) {
     for (const rank of RANKS) {
       deck.push({ suit, rank });
     }
   }
-
-  // Shuffle
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-
   return deck;
 }
 
 export function setupSpades(state: GameState): GameState {
-  const playerCount = state.players.length;
-  if (playerCount !== 4) {
-    return state;
-  }
-
-  // Assign teams
-  state.players[0].team = 'TEAM_A';
-  state.players[1].team = 'TEAM_B';
-  state.players[2].team = 'TEAM_A';
-  state.players[3].team = 'TEAM_B';
+  if (state.players.length !== 4) return state;
 
   const deck = createDeck();
+  const players = state.players.map((p, i) => ({
+    ...p,
+    team: (i % 2 === 0 ? 'TEAM_A' : 'TEAM_B') as 'TEAM_A' | 'TEAM_B',
+    hand: deck.splice(0, 13),
+    bid: null,
+    tricksTaken: 0,
+    bags: 0
+  }));
 
-  // Deal 13 cards to each player
-  for (let i = 0; i < state.players.length; i++) {
-    state.players[i].hand = deck.splice(0, 13);
-    state.players[i].bid = null;
-    state.players[i].tricksTaken = 0;
-    state.players[i].bags = 0;
-  }
-
-  state.deck = [];
-  state.currentTrick = { leadSuit: 'SPADE', cards: [] };
-  state.trickHistory = [];
-  state.teamAScore = { tricks: 0, bags: 0, score: 0 };
-  state.teamBScore = { tricks: 0, bags: 0, score: 0 };
-  state.allPlayersBid = false;
-  state.spadesBroken = false;
-  state.phase = 'BIDDING';
-  state.activePlayerIndex = 0;
-
-  return state;
+  return {
+    ...state,
+    players,
+    deck: [],
+    currentTrick: { leadSuit: 'SPADE', cards: [] },
+    trickHistory: [],
+    teamAScore: state.teamAScore ? { ...state.teamAScore } : { tricks: 0, bags: 0, score: 0 },
+    teamBScore: state.teamBScore ? { ...state.teamBScore } : { tricks: 0, bags: 0, score: 0 },
+    allPlayersBid: false,
+    spadesBroken: false,
+    phase: 'BIDDING',
+    activePlayerIndex: 0,
+  };
 }
 
-export function placeBid(state: GameState, playerId: string, bid: number): void {
+export function placeBid(state: GameState, playerId: string, bid: number): { state?: GameState; error?: string } {
+  if (state.phase !== 'BIDDING') return { error: 'Not bidding phase' };
+  
   const player = state.players.find(p => p.id === playerId);
-  if (player) {
-    player.bid = Math.max(0, Math.min(bid, player.hand.length));
+  if (!player) return { error: 'Player not found' };
+
+  let newState = { ...state };
+  newState.players = newState.players.map(p => 
+    p.id === playerId ? { ...p, bid: Math.max(0, Math.min(bid, 13)) } : p
+  );
+
+  if (newState.players.every(p => p.bid !== null)) {
+    newState.allPlayersBid = true;
+    newState.phase = 'PLAYING';
+    newState.currentTrick = { leadSuit: 'SPADE', cards: [] };
+    newState.activePlayerIndex = 0; // Player 0 (left of dealer) leads first trick
+  } else {
+    newState.activePlayerIndex = (newState.activePlayerIndex + 1) % 4;
   }
 
-  // Check if all players bid
-  if (state.players.every(p => p.bid !== null)) {
-    state.allPlayersBid = true;
-    state.phase = 'PLAYING';
-    state.currentTrick = { leadSuit: 'SPADE', cards: [] };
-  }
+  return { state: newState };
 }
 
-export function playCard(state: GameState, playerId: string, card: Card): boolean {
+export function canOnlyPlaySpades(player: Player): boolean {
+  return player.hand.every((card) => card.suit === 'SPADE');
+}
+
+export function playCard(state: GameState, playerId: string, card: Card): { state?: GameState; error?: string } {
+  if (state.phase !== 'PLAYING') return { error: 'Not playing phase' };
+  
   const player = state.players.find(p => p.id === playerId);
-  if (!player) return false;
+  if (!player) return { error: 'Player not found' };
 
   const cardIndex = player.hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
-  if (cardIndex === -1) return false;
+  if (cardIndex === -1) return { error: 'Card not in hand' };
 
-  // Validate play
+  let leadSuit = state.currentTrick.cards.length === 0 ? card.suit : state.currentTrick.leadSuit;
+
   if (state.currentTrick.cards.length === 0) {
-    // First card sets the lead suit
-    if (card.suit !== 'SPADE' || state.spadesBroken) {
-      state.currentTrick.leadSuit = card.suit;
-    } else if (card.suit === 'SPADE' && !state.spadesBroken && !canOnlyPlaySpades(player)) {
-      return false; // Can't lead spades unless broken
+    if (card.suit === 'SPADE' && !state.spadesBroken && !canOnlyPlaySpades(player)) {
+      return { error: 'Spades are not broken yet' };
     }
   } else {
-    // Must follow suit if possible
     const mustFollowSuit = player.hand.some(c => c.suit === state.currentTrick.leadSuit);
     if (mustFollowSuit && card.suit !== state.currentTrick.leadSuit) {
-      return false;
+      return { error: `Must follow lead suit (${state.currentTrick.leadSuit})` };
     }
   }
 
+  let newState = { ...state };
   if (card.suit === 'SPADE') {
-    state.spadesBroken = true;
+    newState.spadesBroken = true;
   }
 
-  state.currentTrick.cards.push({ playerId, card });
-  player.hand.splice(cardIndex, 1);
+  const newHand = [...player.hand];
+  newHand.splice(cardIndex, 1);
+  newState.players = newState.players.map(p => p.id === playerId ? { ...p, hand: newHand } : p);
 
-  // Check if trick is complete
-  if (state.currentTrick.cards.length === 4) {
-    resolveTrick(state);
+  newState.currentTrick = {
+    ...newState.currentTrick,
+    leadSuit,
+    cards: [...newState.currentTrick.cards, { playerId, card }]
+  };
+
+  if (newState.currentTrick.cards.length === 4) {
+    newState = resolveTrick(newState);
+  } else {
+    newState.activePlayerIndex = (newState.activePlayerIndex + 1) % 4;
   }
 
-  return true;
+  return { state: newState };
 }
 
-export function canOnlyPlaySpades(player: any): boolean {
-  return player.hand.every((card: Card) => card.suit === 'SPADE');
-}
-
-export function resolveTrick(state: GameState): void {
+export function resolveTrick(state: GameState): GameState {
   const leadSuit = state.currentTrick.leadSuit;
   let highestCard = state.currentTrick.cards[0];
   let hasSpade = state.currentTrick.cards.some(c => c.card.suit === 'SPADE');
 
   for (const play of state.currentTrick.cards) {
     if (hasSpade && play.card.suit === 'SPADE') {
-      if (RANK_VALUES[play.card.rank] > RANK_VALUES[highestCard.card.rank]) {
+      if (highestCard.card.suit !== 'SPADE' || RANK_VALUES[play.card.rank] > RANK_VALUES[highestCard.card.rank]) {
         highestCard = play;
       }
     } else if (!hasSpade && play.card.suit === leadSuit) {
@@ -144,55 +139,75 @@ export function resolveTrick(state: GameState): void {
     }
   }
 
-  const winner = state.players.find(p => p.id === highestCard.playerId);
-  if (winner) {
-    winner.tricksTaken += 1;
-    state.currentTrick.winner = winner.id;
+  let newState = { ...state };
+  const winnerId = highestCard.playerId;
+  newState.players = newState.players.map(p => 
+    p.id === winnerId ? { ...p, tricksTaken: p.tricksTaken + 1 } : p
+  );
+
+  newState.trickHistory = [...newState.trickHistory, { ...newState.currentTrick, winner: winnerId }];
+  newState.activePlayerIndex = newState.players.findIndex(p => p.id === winnerId);
+  newState.currentTrick = { leadSuit: 'SPADE', cards: [] };
+
+  if (newState.trickHistory.length === 13) {
+    newState = endRound(newState);
   }
 
-  state.trickHistory.push(state.currentTrick);
-  state.activePlayerIndex = state.players.findIndex(p => p.id === highestCard.playerId);
-  state.currentTrick = { leadSuit: 'SPADE', cards: [] };
-
-  // Check if round is over
-  if (state.trickHistory.length === 13) {
-    endRound(state);
-  }
+  return newState;
 }
 
-export function endRound(state: GameState): void {
-  // Calculate scores
-  for (const player of state.players) {
-    if (!player.bid) return;
+export function endRound(state: GameState): GameState {
+  let newState = { ...state };
+  newState.teamAScore = { ...newState.teamAScore };
+  newState.teamBScore = { ...newState.teamBScore };
 
-    const team = player.team;
-    const score = team === 'TEAM_A' ? state.teamAScore : state.teamBScore;
+  function scoreTeam(team: 'TEAM_A' | 'TEAM_B', teamScore: TeamScore) {
+    const members = newState.players.filter(p => p.team === team);
+    let combinedBid = 0;
+    let partnerTricks = 0;
+    let roundScore = 0;
+    let nilTricks = 0;
 
-    if (player.tricksTaken >= player.bid) {
-      score.tricks += player.bid * 10;
-      score.bags += player.tricksTaken - player.bid;
-    } else {
-      score.tricks -= player.bid * 10;
+    for (const m of members) {
+      if (m.bid === 0) {
+        if (m.tricksTaken === 0) {
+          roundScore += 100;
+        } else {
+          roundScore -= 100;
+          nilTricks += m.tricksTaken;
+        }
+      } else {
+        combinedBid += (m.bid || 0);
+        partnerTricks += m.tricksTaken;
+      }
     }
 
-    score.score = score.tricks + (score.bags % 10 > 0 ? 1 : 0);
+    if (partnerTricks >= combinedBid) {
+      roundScore += combinedBid * 10;
+      teamScore.bags += (partnerTricks - combinedBid) + nilTricks;
+    } else {
+      roundScore -= combinedBid * 10;
+      teamScore.bags += nilTricks;
+    }
 
-    if (score.bags >= 10) {
-      score.bags -= 10;
-      score.score -= 100;
+    teamScore.score += roundScore;
+
+    if (teamScore.bags >= 10) {
+      teamScore.bags -= 10;
+      teamScore.score -= 100;
     }
   }
 
-  // Check if game is over
+  scoreTeam('TEAM_A', newState.teamAScore);
+  scoreTeam('TEAM_B', newState.teamBScore);
+
   const MAX_SCORE = 500;
-  if (state.teamAScore.score >= MAX_SCORE || state.teamBScore.score >= MAX_SCORE) {
-    state.phase = 'GAME_OVER';
-    if (state.teamAScore.score > state.teamBScore.score) {
-      state.winner = state.players.find(p => p.team === 'TEAM_A')?.id;
-    } else {
-      state.winner = state.players.find(p => p.team === 'TEAM_B')?.id;
-    }
+  if (newState.teamAScore.score >= MAX_SCORE || newState.teamBScore.score >= MAX_SCORE) {
+    newState.phase = 'GAME_OVER';
+    newState.winner = newState.teamAScore.score > newState.teamBScore.score ? 'TEAM_A' : 'TEAM_B';
   } else {
-    setupSpades(state);
+    newState = setupSpades(newState);
   }
+
+  return newState;
 }

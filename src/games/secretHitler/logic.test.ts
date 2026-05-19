@@ -3,11 +3,7 @@ import {
   setupSecretHitler,
   canNominateChancellor,
   passPresident,
-  countJa,
   enactPolicy,
-  topDeckChaosPolicy,
-  hitlerElectedAsChancellor,
-  getAliveCount,
   handleInvestigate,
   handleSpecialElection,
   handleExecute
@@ -15,7 +11,7 @@ import {
 import type { SecretHitlerState, SecretHitlerPlayer } from './types';
 
 function makePlayer(id: string, name: string): SecretHitlerPlayer {
-  return { id, name, isAlive: true, role: 'LIBERAL', partyMembership: 'LIBERAL', isConnected: true };
+  return { id, name, isAlive: true, role: 'LIBERAL', partyMembership: 'LIBERAL', isConnected: true, seatIndex: 0, team: 'TEAM_A' };
 }
 
 function makeLobbyState(players: SecretHitlerPlayer[]): SecretHitlerState {
@@ -43,6 +39,8 @@ function makeLobbyState(players: SecretHitlerPlayer[]): SecretHitlerState {
     specialElectionReturnIndex: null,
     moveLog: [],
     lastMove: null,
+    investigateResults: {},
+    activePlayerIndex: 0
   };
 }
 

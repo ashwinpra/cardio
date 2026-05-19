@@ -1,6 +1,9 @@
-import type { GameState, Card, LoveLetterRole } from './types';
+import type { GameState, Card, LoveLetterRole } from './types.js';
 
 const CARD_DECK: Array<{ role: LoveLetterRole; value: number }> = [
+  { role: 'GUARD', value: 1 },
+  { role: 'GUARD', value: 1 },
+  { role: 'GUARD', value: 1 },
   { role: 'GUARD', value: 1 },
   { role: 'GUARD', value: 1 },
   { role: 'PRIEST', value: 2 },
@@ -34,200 +37,209 @@ export function setupLoveLetter(state: GameState): GameState {
     return state;
   }
 
-  // Clear one card from deck
   const deck = createDeck();
-  deck.shift(); // Remove top card
+  const setAsideCard = deck.shift() || null;
 
-  // Deal one card to each player
-  for (let i = 0; i < state.players.length; i++) {
-    state.players[i].hand = [deck.shift()!];
-    state.players[i].isEliminated = false;
-    state.players[i].tokens = 0;
-  }
+  const players = state.players.map(p => ({
+    ...p,
+    hand: deck.splice(0, 1),
+    isEliminated: false,
+    tokens: p.tokens || 0
+  }));
 
-  state.deck = deck;
-  state.discardPile = [];
-  state.eliminatedThisRound = [];
-  state.currentRound = 1;
-  state.handmaidProtection = null;
-  state.phase = 'ROUND_START';
-  state.activePlayerIndex = 0;
+  // Active player draws a card to start the round
+  const activeIndex = 0;
+  players[activeIndex].hand.push(deck.shift()!);
 
-  return state;
+  return {
+    ...state,
+    players,
+    deck,
+    setAsideCard,
+    discardPile: [],
+    eliminatedThisRound: [],
+    currentRound: state.currentRound || 1,
+    handmaidProtections: [],
+    priestPeeks: [],
+    phase: 'PLAYING',
+    activePlayerIndex: activeIndex,
+  };
 }
 
-export function drawCard(state: GameState, playerId: string): Card | null {
-  if (state.deck.length === 0) return null;
-
-  const card = state.deck.shift()!;
-  const player = state.players.find(p => p.id === playerId);
-  if (player) {
-    player.hand.push(card);
-  }
-
-  return card;
+function eliminatePlayer(state: GameState, playerId: string): GameState {
+  return {
+    ...state,
+    players: state.players.map(p => p.id === playerId ? { ...p, isEliminated: true } : p),
+    eliminatedThisRound: [...state.eliminatedThisRound, playerId]
+  };
 }
 
-export function playCard(state: GameState, playerId: string, cardRole: LoveLetterRole): void {
-  const player = state.players.find(p => p.id === playerId);
-  if (!player) return;
-
-  const cardIndex = player.hand.findIndex(c => c.role === cardRole);
-  if (cardIndex === -1) return;
-
-  const card = player.hand[cardIndex];
-  state.discardPile.push(card);
-  player.hand.splice(cardIndex, 1);
-
-  // Draw a new card
-  if (state.deck.length > 0) {
-    drawCard(state, playerId);
-  }
-}
-
-export function eliminatePlayer(state: GameState, playerId: string): void {
-  const player = state.players.find(p => p.id === playerId);
-  if (player) {
-    player.isEliminated = true;
-    state.eliminatedThisRound.push(playerId);
-  }
-}
-
-export function handleCardEffect(
+export function playCard(
   state: GameState,
   playerId: string,
   cardRole: LoveLetterRole,
   targetId?: string,
   guessedRole?: LoveLetterRole
-): void {
-  const player = state.players.find(p => p.id === playerId);
-  if (!player) return;
+): { state?: GameState; error?: string } {
+  let newState = { ...state };
+  const player = newState.players.find(p => p.id === playerId);
+  if (!player || player.isEliminated) return { error: 'Invalid player' };
 
-  const target = targetId ? state.players.find(p => p.id === targetId) : null;
+  const handIndex = player.hand.findIndex(c => c.role === cardRole);
+  if (handIndex === -1) return { error: 'Card not in hand' };
 
-  switch (cardRole) {
-    case 'GUARD':
-      // Guess a card
-      if (target && guessedRole && !target.isEliminated && target.id !== state.handmaidProtection) {
-        const targetCard = target.hand[0];
-        if (targetCard.role === guessedRole) {
-          eliminatePlayer(state, targetId!);
-        }
-      }
-      break;
 
-    case 'PRIEST':
-      // Look at opponent's hand
-      if (target && !target.isEliminated && target.id !== state.handmaidProtection) {
-        // Client-side: reveal target's hand to player
-      }
-      break;
-
-    case 'BARON':
-      // Compare hands, lower is eliminated
-      if (target && !target.isEliminated && target.id !== state.handmaidProtection) {
-        const playerValue = player.hand[0]?.value || 0;
-        const targetValue = target.hand[0]?.value || 0;
-        if (playerValue > targetValue) {
-          eliminatePlayer(state, targetId!);
-        } else if (targetValue > playerValue) {
-          eliminatePlayer(state, playerId);
-        }
-      }
-      break;
-
-    case 'HANDMAID':
-      // Protection until next turn
-      state.handmaidProtection = playerId;
-      break;
-
-    case 'PRINCE':
-      // Target discards hand
-      if (target && !target.isEliminated && target.id !== state.handmaidProtection) {
-        const discardedCard = target.hand[0];
-        if (discardedCard) {
-          state.discardPile.push(discardedCard);
-          target.hand = [];
-
-          if (state.deck.length > 0) {
-            drawCard(state, targetId!);
-          } else {
-            eliminatePlayer(state, targetId!);
-          }
-        }
-      }
-      break;
-
-    case 'KING':
-      // Swap hands
-      if (target && !target.isEliminated && target.id !== state.handmaidProtection) {
-        [player.hand, target.hand] = [target.hand, player.hand];
-      }
-      break;
-
-    case 'COUNTESS':
-      // Must play if King or Prince in hand
-      break;
-
-    case 'PRINCESS':
-      // If discarded, player is eliminated
-      eliminatePlayer(state, playerId);
-      break;
+  // Countess restriction: If you have the Countess and the King or Prince, you must play the Countess.
+  if (cardRole !== 'COUNTESS' && player.hand.some(c => c.role === 'COUNTESS') && (cardRole === 'KING' || cardRole === 'PRINCE')) {
+    return { error: 'You must play the Countess if you hold the King or Prince.' };
   }
-}
 
-export function checkRoundEnd(state: GameState): boolean {
-  const activePlayers = state.players.filter(p => !p.isEliminated);
-  return activePlayers.length <= 1 || state.deck.length === 0;
-}
+  const playedCard = player.hand[handIndex];
+  const newHand = [...player.hand];
+  newHand.splice(handIndex, 1);
 
-export function endRound(state: GameState): void {
-  const activePlayers = state.players.filter(p => !p.isEliminated);
+  newState.discardPile = [...newState.discardPile, playedCard];
+  newState.players = newState.players.map(p => p.id === playerId ? { ...p, hand: newHand } : p);
 
-  if (activePlayers.length === 1) {
-    // Give winner a token
-    activePlayers[0].tokens += 1;
+  const target = targetId ? newState.players.find(p => p.id === targetId) : null;
+  const isProtected = target && newState.handmaidProtections.includes(target.id);
 
-    // Check if won
-    const playerCount = state.players.length;
-    const tokensNeeded = playerCount === 2 ? 7 : playerCount === 3 ? 5 : 4;
-
-    if (activePlayers[0].tokens >= tokensNeeded) {
-      state.phase = 'GAME_OVER';
-      state.winner = activePlayers[0].id;
-    } else {
-      setupLoveLetter(state);
-      state.currentRound += 1;
+  // Apply card effect
+  if (cardRole === 'PRINCESS') {
+    newState = eliminatePlayer(newState, playerId);
+  } else if (cardRole === 'HANDMAID') {
+    if (!newState.handmaidProtections.includes(playerId)) {
+      newState.handmaidProtections = [...newState.handmaidProtections, playerId];
     }
-  } else {
-    // Highest card wins
-    let highestPlayer = activePlayers[0];
-    for (const p of activePlayers) {
-      if ((p.hand[0]?.value || 0) > (highestPlayer.hand[0]?.value || 0)) {
-        highestPlayer = p;
+  } else if (target && target.id === playerId && cardRole === 'PRINCE') {
+    // Prince self
+    const discardedCard = target.hand[0];
+    if (discardedCard) {
+      newState.discardPile = [...newState.discardPile, discardedCard];
+      if (discardedCard.role === 'PRINCESS') {
+        newState = eliminatePlayer(newState, playerId);
+        newState.players = newState.players.map(p => p.id === playerId ? { ...p, hand: [] } : p);
+      } else {
+        const draw = newState.deck.length > 0 ? newState.deck[0] : newState.setAsideCard;
+        const remainingDeck = newState.deck.length > 0 ? newState.deck.slice(1) : newState.deck;
+        newState.deck = remainingDeck;
+        newState.players = newState.players.map(p => p.id === playerId ? { ...p, hand: draw ? [draw] : [] } : p);
       }
     }
-
-    highestPlayer.tokens += 1;
-
-    const playerCount = state.players.length;
-    const tokensNeeded = playerCount === 2 ? 7 : playerCount === 3 ? 5 : 4;
-
-    if (highestPlayer.tokens >= tokensNeeded) {
-      state.phase = 'GAME_OVER';
-      state.winner = highestPlayer.id;
-    } else {
-      setupLoveLetter(state);
-      state.currentRound += 1;
+  } else if (target && !isProtected && !target.isEliminated) {
+    if (cardRole === 'GUARD' && guessedRole) {
+      if (target.hand[0]?.role === guessedRole) {
+        newState = eliminatePlayer(newState, target.id);
+      }
+    } else if (cardRole === 'PRIEST') {
+      if (target.hand[0]) {
+        newState.priestPeeks = [
+          ...newState.priestPeeks,
+          { viewerId: playerId, targetId: target.id, cardRole: target.hand[0].role }
+        ];
+      }
+    } else if (cardRole === 'BARON') {
+      const playerValue = newState.players.find(p => p.id === playerId)?.hand[0]?.value || 0;
+      const targetValue = target.hand[0]?.value || 0;
+      if (playerValue > targetValue) {
+        newState = eliminatePlayer(newState, target.id);
+      } else if (targetValue > playerValue) {
+        newState = eliminatePlayer(newState, playerId);
+      }
+    } else if (cardRole === 'PRINCE') {
+      const discardedCard = target.hand[0];
+      if (discardedCard) {
+        newState.discardPile = [...newState.discardPile, discardedCard];
+        if (discardedCard.role === 'PRINCESS') {
+          newState = eliminatePlayer(newState, target.id);
+          newState.players = newState.players.map(p => p.id === target.id ? { ...p, hand: [] } : p);
+        } else {
+          const draw = newState.deck.length > 0 ? newState.deck[0] : newState.setAsideCard;
+          const remainingDeck = newState.deck.length > 0 ? newState.deck.slice(1) : newState.deck;
+          newState.deck = remainingDeck;
+          newState.players = newState.players.map(p => p.id === target.id ? { ...p, hand: draw ? [draw] : [] } : p);
+        }
+      }
+    } else if (cardRole === 'KING') {
+      const p1 = newState.players.find(p => p.id === playerId)!;
+      const p2 = newState.players.find(p => p.id === target.id)!;
+      newState.players = newState.players.map(p => {
+        if (p.id === p1.id) return { ...p, hand: [...p2.hand] };
+        if (p.id === p2.id) return { ...p, hand: [...p1.hand] };
+        return p;
+      });
     }
   }
+
+  // End turn & advance phase
+  return { state: advancePhase(newState) };
 }
 
-export function advancePhase(state: GameState): void {
-  state.activePlayerIndex = (state.activePlayerIndex + 1) % state.players.length;
-  state.handmaidProtection = null; // Reset handmaid protection
+function checkRoundEnd(state: GameState): boolean {
+  const activePlayers = state.players.filter(p => !p.isEliminated);
+  if (activePlayers.length <= 1) return true;
+  if (state.deck.length === 0) return true;
+  return false;
+}
 
+export function advancePhase(state: GameState): GameState {
   if (checkRoundEnd(state)) {
-    endRound(state);
+    return endRound(state);
   }
+
+  let newState = { ...state };
+  let nextIndex = (newState.activePlayerIndex + 1) % newState.players.length;
+  while (newState.players[nextIndex].isEliminated) {
+    nextIndex = (nextIndex + 1) % newState.players.length;
+  }
+  
+  newState.activePlayerIndex = nextIndex;
+  const nextPlayerId = newState.players[nextIndex].id;
+
+  // Remove handmaid protection for next player
+  newState.handmaidProtections = newState.handmaidProtections.filter(id => id !== nextPlayerId);
+
+  // Next player draws
+  const draw = newState.deck[0];
+  if (draw) {
+    newState.deck = newState.deck.slice(1);
+    newState.players = newState.players.map(p => p.id === nextPlayerId ? { ...p, hand: [...p.hand, draw] } : p);
+  }
+
+  return newState;
+}
+
+function endRound(state: GameState): GameState {
+  let newState = { ...state };
+  const activePlayers = newState.players.filter(p => !p.isEliminated);
+  let roundWinnerId = activePlayers[0]?.id;
+
+  if (activePlayers.length > 1) {
+    // Highest card wins
+    let highestValue = -1;
+    for (const p of activePlayers) {
+      const val = p.hand[0]?.value || 0;
+      if (val > highestValue) {
+        highestValue = val;
+        roundWinnerId = p.id;
+      }
+    }
+  }
+
+  if (roundWinnerId) {
+    newState.players = newState.players.map(p => p.id === roundWinnerId ? { ...p, tokens: p.tokens + 1 } : p);
+  }
+
+  const playerCount = newState.players.length;
+  const tokensNeeded = playerCount === 2 ? 7 : playerCount === 3 ? 5 : 4;
+  const winner = newState.players.find(p => p.tokens >= tokensNeeded);
+
+  if (winner) {
+    newState.phase = 'GAME_OVER';
+    newState.winner = winner.id;
+  } else {
+    newState = setupLoveLetter({ ...newState, currentRound: newState.currentRound + 1 });
+  }
+
+  return newState;
 }

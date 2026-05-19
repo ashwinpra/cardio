@@ -7,3 +7,14 @@ dist/
 notes.md
 stitch_designs/
 DESIGN.md
+
+# Local Database
+sessions.db
+sessions.db-*
+
+# TypeScript
+*.tsbuildinfo
+
+# IDEs
+.vscode/
+.idea/

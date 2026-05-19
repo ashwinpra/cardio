@@ -64,11 +64,12 @@ export function getBlockingRoles(actionType: string): CoupRole[] {
 }
 
 export function shuffle<T>(array: T[]): T[] {
-  for (let i = array.length - 1; i > 0; i--) {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
+    [result[i], result[j]] = [result[j], result[i]];
   }
-  return array;
+  return result;
 }
 
 export function setupCoup(gameState: GameState): GameState {
@@ -111,9 +112,6 @@ export function handleBasicAction(state: GameState, actorId: string, type: any, 
   if (type === 'INCOME') {
     coinsChange = 1;
     details = `${actor.name} took ${actionLabel} (+1)`;
-  } else if (type === 'FOREIGN_AID') {
-    coinsChange = 2;
-    details = `${actor.name} took ${actionLabel} (+2)`;
   } else if (type === 'COUP') {
     if (actor.coins < 7) return state;
     coinsChange = -7;
