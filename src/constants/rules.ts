@@ -89,6 +89,31 @@ export const GAME_RULES: Record<string, {
       'Track which cards have been played to narrow down what opponents might be holding.'
     ]
   },
+  'AVALON': {
+    title: 'The Resistance: Avalon',
+    description: 'Avalon is a hidden-role social deduction game for 5–10 players set in the world of Arthurian legend. Players are secretly divided into Good (Loyal Servants of Arthur) and Evil (Minions of Mordred). Good players must complete quests; Evil players must sabotage them — but nobody knows who to trust.',
+    playerCount: '5–10 players',
+    objective: 'Good wins by successfully completing 3 quests AND correctly surviving the Assassination phase. Evil wins by failing 3 quests, causing 5 consecutive rejected team proposals, or successfully assassinating Merlin.',
+    setup: [
+      'Each player is secretly assigned a hidden role. Key special roles: Merlin (Good, sees Evil), Percival (Good, sees Merlin & Morgana), Assassin (Evil, targets Merlin at game end), Morgana (Evil, disguised as Merlin to Percival), Mordred (Evil, hidden from Merlin), Oberon (Evil, unknown to other Evil players).',
+      'At game start, players close their eyes. Evil players (except Oberon) open their eyes to see each other. Merlin opens their eyes to see Evil players (except Mordred). Percival opens their eyes to see two candidates — one is Merlin, one may be Morgana.',
+      'A random player begins as the first Leader (indicated by the Leader crown).'
+    ],
+    steps: [
+      'Team Proposal: The current Leader selects the required number of players for the quest (shown in the Quest Tracker). Team size varies by quest and player count.',
+      'Team Vote: ALL players simultaneously vote Approve or Reject. If strictly more than half approve, the team goes on the quest. If rejected, the Leader passes clockwise and a new proposal is made. If 5 consecutive proposals are rejected, Evil wins immediately.',
+      'Quest Vote: Only the selected team members secretly vote Success or Fail. Good players MUST vote Success. Evil players may vote either. Votes are shuffled and revealed anonymously — no one knows who played which card.',
+      'Quest Resolution: One or more Fail cards = quest fails (in 7+ player games, Quest 4 requires 2 Fail cards to fail). The result is recorded and the game advances to the next quest.',
+      'Assassination (if Good completes 3 quests): The Assassin gets one chance to identify and eliminate Merlin. If they succeed, Evil wins despite Good\'s three quest victories. If they miss, Good wins.'
+    ],
+    tips: [
+      'As Merlin, share information subtly — if Evil identifies you, you lose. Act confused sometimes even when you know the truth.',
+      'As Evil, vote strategically on team proposals. Consistent REJECT votes make you look suspicious.',
+      'Track who proposes who for quests. Evil players often protect each other.',
+      'Percival: watch how Merlin reacts to votes and proposals — their behavior under pressure is a clue to their true identity.',
+      'If only 1 Fail card appears on a quest, at least one Evil player was on that team. Work backward from who was proposed.'
+    ]
+  },
   'HANABI': {
     title: 'Hanabi',
     description: 'Hanabi (Japanese for "fireworks") is a cooperative card game where you and your team work together to put on a spectacular fireworks show. The twist: you can see everyone\'s cards except your own. You must rely on your teammates\' hints to figure out what to play.',

@@ -7,6 +7,7 @@ import SecretHitlerBoard from './games/secretHitler/Board';
 import HanabiBoard from './games/hanabi/Board';
 import LoveLetterBoard from './games/love_letter/Board';
 import SpadesBoard from './games/spades/Board';
+import AvalonBoard from './games/avalon/Board';
 import HostControls from './components/HostControls';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
     if (gameState.gameType === 'HANABI') return <HanabiBoard />;
     if (gameState.gameType === 'LOVE_LETTER') return <LoveLetterBoard />;
     if (gameState.gameType === 'SPADES') return <SpadesBoard />;
+    if (gameState.gameType === 'AVALON') return <AvalonBoard />;
     return <div className="p-8 text-center">Unknown Game Type</div>;
   };
 

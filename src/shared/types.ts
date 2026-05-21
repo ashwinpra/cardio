@@ -4,7 +4,8 @@ export type GameType =
   | "SECRET_HITLER"
   | "HANABI"
   | "LOVE_LETTER"
-  | "SPADES";
+  | "SPADES"
+  | "AVALON";
 
 export interface Player {
   id: string;
