@@ -11,12 +11,14 @@ import * as SecretHitlerHandler from "./games/secretHitler.js";
 import * as HanabiHandler from "./games/hanabi.js";
 import * as LoveLetterHandler from "./games/love_letter.js";
 import * as SpadesHandler from "./games/spades.js";
+import * as AvalonHandler from "./games/avalon.js";
 import type { GameState as LiteratureState } from "../src/games/literature/types.js";
 import type { GameState as CoupState } from "../src/games/coup/types.js";
 import type { SecretHitlerState } from "../src/games/secretHitler/types.js";
 import type { GameState as HanabiState } from "../src/games/hanabi/types.js";
 import type { GameState as LoveLetterState } from "../src/games/love_letter/types.js";
 import type { GameState as SpadesState } from "../src/games/spades/types.js";
+import type { AvalonState } from "../src/games/avalon/types.js";
 import type { BaseGameState, GameType, Move } from "../src/shared/types.js";
 
 type GameStateUnion =
@@ -26,6 +28,7 @@ type GameStateUnion =
   | HanabiState
   | LoveLetterState
   | SpadesState
+  | AvalonState
   | BaseGameState;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -69,6 +72,7 @@ const MAX_PLAYERS: Record<string, number> = {
   HANABI: 5,
   LOVE_LETTER: 4,
   SPADES: 4,
+  AVALON: 10,
 };
 
 const SUPPORTED_MESSAGE_TYPES = new Set([
@@ -87,6 +91,7 @@ const SUPPORTED_MESSAGE_TYPES = new Set([
   "MOVE_CARD",
   "GAME_ACTION",
   "HOST_ACTION",
+  "AVALON_ACTION",
 ] as const);
 
 // ─── Types ───────────────────────────────────────────────
@@ -428,6 +433,61 @@ function sanitizeStateForPlayer(
     };
   }
 
+  if (state.gameType === "AVALON") {
+    const avalonState = state as AvalonState;
+    const me = avalonState.players.find((p) => p.id === playerId);
+    const myVisibility = avalonState.roleVisibility?.[playerId] ?? [];
+
+    // Build a set of player IDs this observer can identify
+    const visibilityMap = new Map(
+      myVisibility.map((v) => [v.playerId, v.knownAs]),
+    );
+
+    const sanitizedPlayers = avalonState.players.map((p: any) => ({
+      ...p,
+      // Only reveal own role; others get undefined unless observer can see them
+      role: p.id === playerId
+        ? p.role
+        : avalonState.phase === 'GAME_OVER'
+          ? p.role
+          : undefined,
+      // Provide what this observer knows about the other player
+      knownAs: p.id === playerId ? undefined : visibilityMap.get(p.id),
+    }));
+
+    // During TEAM_VOTE: only show own vote; after resolution: show full shuffled reveal
+    const sanitizedTeamVotes =
+      avalonState.phase === 'TEAM_VOTE'
+        ? avalonState.teamVotesPrivate[playerId] !== undefined
+          ? [{ playerId, vote: avalonState.teamVotesPrivate[playerId] }]
+          : []
+        : avalonState.teamVotesRevealed;
+
+    // Quest votes: never reveal individual votes — only the shuffled reveal
+    const sanitizedQuestVotes =
+      avalonState.phase === 'QUEST_VOTE'
+        ? [] // hide votes entirely until all are in
+        : avalonState.questVotesRevealed;
+
+    return {
+      ...avalonState,
+      players: sanitizedPlayers,
+      // Strip all private server-only fields
+      teamVotesPrivate: {},
+      questVotesPrivate: {},
+      teamVotesRevealed: sanitizedTeamVotes,
+      questVotesRevealed: sanitizedQuestVotes,
+      // Strip role visibility map (computed per-player above)
+      roleVisibility: {},
+      percivalCandidates: [],
+      // Provide a flag: has this player voted in each phase?
+      myTeamVote: avalonState.teamVotesPrivate[playerId] ?? null,
+      myQuestVote: avalonState.questVotesPrivate[playerId] ?? null,
+      // Expose visible player info for the client
+      visibleRoles: myVisibility,
+    } as any;
+  }
+
   return state;
 }
 
@@ -531,6 +591,28 @@ function createEmptyState(
       teamBScore: { tricks: 0, bags: 0, score: 0 },
       allPlayersBid: false,
       spadesBroken: false,
+    };
+  }
+
+  if (gameType === "AVALON") {
+    return {
+      ...base,
+      currentQuest: 0,
+      proposalNumber: 0,
+      leaderIndex: 0,
+      currentTeam: [],
+      teamVotesPrivate: {},
+      teamVotesRevealed: [],
+      questVotesPrivate: {},
+      questVotesRevealed: [],
+      questHistory: [],
+      successfulQuests: 0,
+      failedQuests: 0,
+      assassinationTarget: null,
+      winner: null,
+      winnerReason: null,
+      roleVisibility: {},
+      percivalCandidates: [],
     };
   }
 
@@ -835,6 +917,7 @@ wss.on("connection", (ws) => {
         case "CLAIM_BOOK":
         case "COUP_ACTION":
         case "SECRET_HITLER_ACTION":
+        case "AVALON_ACTION":
         case "PLACE_BID":
         case "PLAY_CARD":
         case "DISCARD_CARD":
@@ -909,6 +992,11 @@ wss.on("connection", (ws) => {
               );
             } else if (liveSession.gameType === "SPADES") {
               result = SpadesHandler.handleAction(
+                liveSession.state as any,
+                actionData,
+              );
+            } else if (liveSession.gameType === "AVALON") {
+              result = AvalonHandler.handleAction(
                 liveSession.state as any,
                 actionData,
               );
